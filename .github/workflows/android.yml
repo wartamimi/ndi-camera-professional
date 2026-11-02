@@ -32,12 +32,13 @@ jobs:
           distribution: temurin
           java-version: "17"
 
-      - uses: android-actions/setup-android@v3
-
       - name: Install Android build tools, NDK and CMake
         run: |
-          sdkmanager --install "platforms;android-35" "build-tools;35.0.0" "ndk;${NDK_VERSION}" "cmake;${CMAKE_VERSION}" > /dev/null
-          echo "Installed:"; sdkmanager --list_installed | grep -E "ndk|cmake|platforms;android-35|build-tools;35"
+          # The GitHub-hosted Ubuntu image ships the Android SDK at $ANDROID_HOME.
+          SDKM="$(ls -d "$ANDROID_HOME"/cmdline-tools/*/bin/sdkmanager | sort -V | tail -n1)"
+          yes | "$SDKM" --licenses > /dev/null || true
+          "$SDKM" --install "platforms;android-35" "build-tools;35.0.0" "ndk;${NDK_VERSION}" "cmake;${CMAKE_VERSION}" > /dev/null
+          echo "Installed:"; "$SDKM" --list_installed | grep -E "ndk|cmake|platforms;android-35|build-tools;35"
 
       - uses: gradle/actions/wrapper-validation@v4
       - uses: gradle/actions/setup-gradle@v4
@@ -138,9 +139,11 @@ jobs:
         with:
           distribution: temurin
           java-version: "17"
-      - uses: android-actions/setup-android@v3
       - name: Install Android build tools, NDK and CMake
-        run: sdkmanager --install "platforms;android-35" "build-tools;35.0.0" "ndk;${NDK_VERSION}" "cmake;${CMAKE_VERSION}" > /dev/null
+        run: |
+          SDKM="$(ls -d "$ANDROID_HOME"/cmdline-tools/*/bin/sdkmanager | sort -V | tail -n1)"
+          yes | "$SDKM" --licenses > /dev/null || true
+          "$SDKM" --install "platforms;android-35" "build-tools;35.0.0" "ndk;${NDK_VERSION}" "cmake;${CMAKE_VERSION}" > /dev/null
       - uses: gradle/actions/setup-gradle@v4
 
       - name: Prepare release signing (optional)
