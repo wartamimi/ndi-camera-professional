@@ -3,7 +3,7 @@
 Legend: **Impl** = code written · **Compiled** = compiled in CI · **Unit** = covered by an automated test that passed ·
 **Device** = tested on a phone · **External** = verified with an external NDI receiver.
 
-Last CI run: [Android CI #41394484058](https://github.com/wartamimi/ndi-camera-professional/actions/runs/41394484058) (2026-11-02).
+Last CI run: [Android CI #41397047316](https://github.com/wartamimi/ndi-camera-professional/actions/runs/41397047316) (2026-11-02), with the official NDI SDK for Android (v6, Linux-hosted installer).
 
 ## Build results
 
@@ -13,10 +13,12 @@ Last CI run: [Android CI #41394484058](https://github.com/wartamimi/ndi-camera-p
 | Kotlin unit tests (`testDebugUnitTest`) | PASS |
 | Validation APK (`-Pndi.validationBuild=true assembleDebug`): Kotlin + `libndicam.so` for arm64-v8a and armeabi-v7a | PASS |
 | Android lint (`lintDebug`) | PASS |
-| Production NDI build (`libndibridge.so` linked against `libndi.so`) | **NOT RUN**: `NDI_SDK_URL` secret not configured, job failed with the intended explicit error |
+| Production NDI build: `libndibridge.so` compiled against the official headers and linked to `libndi.so` (arm64-v8a, armeabi-v7a) | PASS |
+| APK content check: `lib/<abi>/libndi.so` and `lib/<abi>/libndibridge.so` present for both ABIs | PASS (debug APK, artifact `ndi-apk`) |
+| Release APK | not built: signing secrets not configured |
 
-`libndibridge.so` (`ndi_sender.cpp`, `ndi_finder.cpp`, `jni_ndi.cpp`) has **never been compiled**, because no copy
-of the NDI SDK headers was available to the build. Expect possibly small fixes the first time it builds.
+The NDI bridge compiles and links, but **has not been executed**: whether `NDIlib_initialize` succeeds, the
+source is advertised, and frames arrive at a receiver is only known after the device/receiver tests below.
 
 ## Feature status
 
@@ -34,10 +36,10 @@ of the NDI SDK headers was available to the build. Expect possibly small fixes t
 | Zebra, focus peaking, histogram (native) | ✓ | ✓ | ✓ (native analyzer) | – | – |
 | Thirds, crosshair, safe areas | ✓ | ✓ | – | – | – |
 | YUV_420_888 → NV12 conversion with rotation/mirror | ✓ | ✓ | ✓ (native, ASan) | – | – |
-| NDI init / SDK-missing / init-failed states | ✓ | ✓ (Kotlin) / ✗ (bridge) | – | – | – |
-| NDI sender create/destroy, async video, FLTP audio | ✓ | ✗ | – | – | – |
-| Tally, connection count, source name | ✓ | ✗ | – | – | – |
-| Discovery self-test (NDI finder) | ✓ | ✗ | – | – | – |
+| NDI init / SDK-missing / init-failed states | ✓ | ✓ | – | – | – |
+| NDI sender create/destroy, async video, FLTP audio | ✓ | ✓ | – | – | – |
+| Tally, connection count, source name | ✓ | ✓ | – | – | – |
+| Discovery self-test (NDI finder) | ✓ | ✓ | – | – | – |
 | Sender recreation on network change, retry on failure | ✓ | ✓ | – | – | – |
 | Audio capture, device selection, USB attach/detach | ✓ | ✓ | – | – | – |
 | Gain, mute, meters (native) | ✓ | ✓ | ✓ (native) | – | – |

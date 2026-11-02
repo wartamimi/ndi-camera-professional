@@ -32,7 +32,8 @@ If anything is missing, Gradle stops with the list of missing files. It never bu
 
 The production job downloads your copy of the SDK at build time:
 
-1. Zip the SDK folder you installed (it must contain `include/Processing.NDI.Lib.h` and `libndi.so` per ABI somewhere inside).
+1. Either use the download link NDI emails you for **NDI SDK for Android (Linux)** (a `.tar.gz` holding a
+   self-extracting installer; CI extracts its payload, verified with SDK v6), or zip the SDK folder you installed (it must contain `include/Processing.NDI.Lib.h` and `libndi.so` per ABI somewhere inside).
 2. Host it where only you can reach it, e.g. a private cloud-storage link or a release asset in a **private** repository with a token-bearing URL.
 3. In GitHub: *Settings › Secrets and variables › Actions*:
    - `NDI_SDK_URL`: the download URL (secret).
