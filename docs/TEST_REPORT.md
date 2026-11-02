@@ -55,3 +55,18 @@ source is advertised, and frames arrive at a receiver is only known after the de
 All device tests (launch, permissions, preview, switching, manual controls, audio) and all external receiver
 tests E1–E15 in [RECEIVER_TESTING.md](RECEIVER_TESTING.md), plus long-duration, memory and thermal runs.
 None of these may be reported as passed until performed on hardware.
+
+## 2026-11-02 · Google Play plans, vertical layout, splash, onboarding (CI run 41424463237)
+
+| Item | Implemented | Compiled (CI) | Unit-tested | Device-tested |
+|---|---|---|---|---|
+| Plans Free/Basic/Pro/Ultra/Max, feature gating | ✓ | ✓ | ✓ (PlansTest) | – |
+| Google Play Billing 8 (subscriptions, lifetime, restore) | ✓ | ✓ | – | – (needs a Play test track) |
+| Free watermark burned into NDI output | ✓ | ✓ | ✓ (native host test) | – |
+| Free 15-minute session limit + dialog | ✓ | ✓ | – | – |
+| Vertical layout (default), landscape, auto-rotate | ✓ | ✓ | – | – |
+| AndroidX splash screen, first-launch onboarding | ✓ | ✓ | – | – |
+| About "Dibuat oleh Munawar Tamimi" | ✓ | ✓ | – | – |
+| Target API 36, AGP 8.11.1 / Gradle 8.13 | ✓ | ✓ | – | – |
+| 16 KB page alignment (arm64 libndi.so, libndibridge.so, libndicam.so, libc++_shared.so) | ✓ | ✓ readelf: 0x4000 | – | – |
+| Signed release AAB | ✓ (workflow) | not run: signing secrets not set | – | – |
