@@ -122,6 +122,24 @@ jobs:
             application/x-tar) tar -xf sdk.archive -C x ;;
             *) echo "::error::Unsupported NDI SDK archive type: $(file -b sdk.archive)"; exit 1 ;;
           esac
+          # The Linux-hosted "NDI SDK for Android" is a .tar.gz holding a self-extracting installer
+          # script (licence shown by the script, accepted by the repository owner when downloading).
+          # Extract its embedded payload without running it when the archive marker is present.
+          if ! find x -type f -name Processing.NDI.Lib.h | grep -q .; then
+            find x -type f -name "*.sh" | while read -r sh; do
+              echo "Found installer script: $sh"
+              mkdir -p x/payload
+              line="$(grep -an '^__NDI_ARCHIVE_BEGIN__' "$sh" | head -n1 | cut -d: -f1 || true)"
+              if [ -n "$line" ]; then
+                tail -n +"$((line + 1))" "$sh" > x/payload.bin
+                tar -xzf x/payload.bin -C x/payload 2>/dev/null || tar -xf x/payload.bin -C x/payload
+              else
+                echo "::error::Installer script has no __NDI_ARCHIVE_BEGIN__ marker; first lines follow so the extraction can be adapted."
+                head -n 40 "$sh" | grep -av "^[[:space:]]*$" | head -n 40
+              fi
+            done
+          fi
+          find x -maxdepth 5 | head -60
           header="$(find x -type f -name Processing.NDI.Lib.h | head -n1)"
           if [ -z "$header" ]; then echo "::error::Processing.NDI.Lib.h not found in the NDI SDK archive"; exit 1; fi
           root="$(dirname "$(dirname "$header")")"
