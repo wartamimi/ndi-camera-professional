@@ -139,8 +139,8 @@ jobs:
               fi
             done
           fi
-          find x -maxdepth 5 | head -60
-          header="$(find x -type f -name Processing.NDI.Lib.h | head -n1)"
+          find x -maxdepth 5 > "$RUNNER_TEMP/ndi/files.txt"; grep -E "/(lib|bin)/|\.so$" "$RUNNER_TEMP/ndi/files.txt" || true
+          header="$(find x -type f -name Processing.NDI.Lib.h -print -quit)"
           if [ -z "$header" ]; then echo "::error::Processing.NDI.Lib.h not found in the NDI SDK archive"; exit 1; fi
           root="$(dirname "$(dirname "$header")")"
           echo "SDK root inside archive: $root"
@@ -148,10 +148,10 @@ jobs:
           cp -r "$root/include" "$dest/"
           mkdir -p "$dest/lib"
           for abi in arm64-v8a armeabi-v7a x86 x86_64; do
-            so="$(find "$root" -path "*${abi}*" -name libndi.so | head -n1 || true)"
-            if [ -n "$so" ]; then mkdir -p "$dest/lib/$abi"; cp "$so" "$dest/lib/$abi/"; echo "found $abi"; fi
+            so="$(find "$root" -path "*${abi}*" -name libndi.so -print -quit)"
+            if [ -n "$so" ]; then mkdir -p "$dest/lib/$abi"; cp -L "$so" "$dest/lib/$abi/libndi.so"; echo "found $abi: $so"; fi
           done
-          ls -R "$dest" | head -50
+          ls -lR "$dest/lib"
 
       - uses: actions/setup-java@v4
         with:
