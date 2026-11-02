@@ -1,5 +1,6 @@
 package com.ndicamera.professional.ui.camera
 
+import android.content.res.Configuration
 import android.os.Build
 import android.os.SystemClock
 import android.view.Surface
@@ -22,17 +23,20 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.safeDrawingPadding
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Settings
+import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.Slider
 import androidx.compose.material3.SliderDefaults
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
@@ -54,6 +58,9 @@ import androidx.compose.ui.unit.sp
 import androidx.compose.ui.viewinterop.AndroidView
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.ndicamera.professional.BuildConfig
+import com.ndicamera.professional.billing.Feature
+import com.ndicamera.professional.billing.PlanLimits
+import com.ndicamera.professional.billing.Tier
 import com.ndicamera.professional.camera.ModeSelection
 import com.ndicamera.professional.camera.OrientationMath
 import com.ndicamera.professional.domain.model.AntibandingMode
@@ -81,40 +88,186 @@ import java.util.Locale
 private enum class Panel { LENS, FOCUS, ISO, SHUTTER, WB, ZOOM, EV, TOOLS, STAB }
 
 @Composable
-fun CameraScreen(vm: CameraViewModel, onOpenSettings: () -> Unit) {
+fun CameraScreen(vm: CameraViewModel, onOpenSettings: () -> Unit, onOpenPlans: () -> Unit) {
     val camState by vm.cameraState.collectAsStateWithLifecycle()
     val caps by vm.capabilities.collectAsStateWithLifecycle()
     val tel by vm.telemetry.collectAsStateWithLifecycle()
     val ctl by vm.controls.collectAsStateWithLifecycle()
     val settings by vm.settings.collectAsStateWithLifecycle()
+    val tier by vm.tier.collectAsStateWithLifecycle()
+    val limitReached by vm.sessionLimitReached.collectAsStateWithLifecycle()
     var panel by remember { mutableStateOf<Panel?>(null) }
+    val portrait = LocalConfiguration.current.orientation != Configuration.ORIENTATION_LANDSCAPE
 
     DisposableEffect(Unit) {
         vm.onVisible(true)
         onDispose { vm.onVisible(false) }
     }
 
-    Column(Modifier.fillMaxSize().background(Cine.Black)) {
-        TopStatusBar(vm, caps, onOpenSettings)
-        Row(Modifier.weight(1f).fillMaxWidth()) {
-            InfoColumn(camState, caps, tel, ctl)
-            Box(Modifier.weight(1f).fillMaxHeight(), contentAlignment = Alignment.Center) {
-                PreviewArea(vm, caps)
-                if (panel != null) {
-                    Box(Modifier.align(Alignment.BottomCenter).fillMaxWidth()) {
-                        ControlPanel(panel!!, vm, caps, tel, ctl, settings.overlays)
-                    }
+    val onSelect: (Panel) -> Unit = { panel = if (panel == it) null else it }
+    val previewBox: @Composable (Modifier) -> Unit = { m ->
+        Box(m, contentAlignment = Alignment.Center) {
+            PreviewArea(vm, caps)
+            if (panel != null) {
+                Box(Modifier.align(Alignment.BottomCenter).fillMaxWidth()) {
+                    ControlPanel(panel!!, vm, caps, tel, ctl, settings.overlays, onOpenPlans)
                 }
-                CameraStateBanner(camState, Modifier.align(Alignment.TopCenter))
             }
-            NdiPanel(vm)
+            CameraStateBanner(camState, Modifier.align(Alignment.TopCenter))
+            PlanBadge(tier, Modifier.align(Alignment.TopStart).padding(6.dp), onOpenPlans)
         }
-        BottomBar(caps, tel, ctl, panel, onSelect = { panel = if (panel == it) null else it }, onTorch = { vm.setTorch(!ctl.torch) })
+    }
+
+    if (portrait) {
+        Column(Modifier.fillMaxSize().background(Cine.Black).safeDrawingPadding()) {
+            TopStatusBar(vm, caps, compact = true, onOpenSettings)
+            previewBox(Modifier.weight(1f).fillMaxWidth())
+            InfoStrip(camState, caps, tel, ctl)
+            BottomBar(vm, caps, ctl, panel, onSelect, onTorch = { vm.setTorch(!ctl.torch) })
+            NdiStrip(vm, onOpenPlans)
+        }
+    } else {
+        Column(Modifier.fillMaxSize().background(Cine.Black)) {
+            TopStatusBar(vm, caps, compact = false, onOpenSettings)
+            Row(Modifier.weight(1f).fillMaxWidth()) {
+                InfoColumn(camState, caps, tel, ctl)
+                previewBox(Modifier.weight(1f).fillMaxHeight())
+                NdiPanel(vm, onOpenPlans)
+            }
+            BottomBar(vm, caps, ctl, panel, onSelect, onTorch = { vm.setTorch(!ctl.torch) })
+        }
+    }
+
+    if (limitReached) {
+        AlertDialog(
+            onDismissRequest = { vm.dismissSessionLimit() },
+            containerColor = Cine.Panel,
+            title = { Text("Batas sesi gratis tercapai", color = Cine.Text) },
+            text = {
+                Text("Versi Free menghentikan stream setelah ${PlanLimits.FREE_SESSION_MS / 60_000} menit. " +
+                    "Mulai lagi, atau upgrade ke Basic atau lebih tinggi untuk streaming tanpa batas waktu dan tanpa watermark.",
+                    color = Cine.Dim)
+            },
+            confirmButton = { TextButton(onClick = { vm.dismissSessionLimit(); onOpenPlans() }) { Text("LIHAT PAKET", color = Cine.Accent) } },
+            dismissButton = { TextButton(onClick = { vm.dismissSessionLimit() }) { Text("TUTUP", color = Cine.Dim) } },
+        )
     }
 }
 
 @Composable
-private fun TopStatusBar(vm: CameraViewModel, caps: CameraCapabilities?, onOpenSettings: () -> Unit) {
+private fun PlanBadge(tier: Tier, modifier: Modifier, onOpenPlans: () -> Unit) {
+    val free = tier == Tier.FREE
+    Text(
+        if (free) "FREE · UPGRADE" else tier.label.uppercase(),
+        color = if (free) Color.Black else Cine.Accent, fontFamily = Cine.Mono, fontSize = 10.sp, fontWeight = FontWeight.Black,
+        modifier = modifier
+            .background(if (free) Cine.Accent else Color.Black.copy(alpha = 0.55f), RoundedCornerShape(3.dp))
+            .clickable(onClick = onOpenPlans)
+            .padding(horizontal = 6.dp, vertical = 3.dp),
+    )
+}
+
+/** Horizontal version of [InfoColumn] for the vertical layout. */
+@Composable
+private fun InfoStrip(state: CameraState, caps: CameraCapabilities?, t: CaptureTelemetry, c: CameraControlState) {
+    val mode = (state as? CameraState.Running)?.mode
+    val cell = Modifier.padding(horizontal = 8.dp)
+    Row(Modifier.fillMaxWidth().background(Cine.Panel).horizontalScroll(rememberScrollState()).padding(horizontal = 4.dp)) {
+        InfoCell("RES", mode?.resolution?.label ?: "--", cell)
+        InfoCell("FPS", mode?.fps?.toString() ?: "--", cell)
+        InfoCell("ISO", (t.iso ?: c.iso).toString() + if (c.autoExposure) " A" else "", cell,
+            valueColor = if (c.autoExposure) Cine.Text else Cine.Accent)
+        InfoCell("SHUTTER", t.exposureTimeNs?.let { ModeSelection.shutterLabel(it) } ?: "--", cell,
+            valueColor = if (c.autoExposure) Cine.Text else Cine.Accent)
+        InfoCell("WB", if (c.whiteBalanceMode == WhiteBalanceMode.KELVIN) "${c.kelvin}K"
+            else t.colorTemperatureEstimate?.let { "~${it}K" } ?: c.awbPreset.label, cell)
+        InfoCell("FOCUS", t.focusDistanceDiopters?.let { d -> if (d <= 0.01f) "∞" else String.format(Locale.US, "%.2fm", 1f / d) } ?: "--", cell,
+            valueColor = if (c.focusMode == FocusMode.MANUAL) Cine.Accent else Cine.Text)
+        InfoCell("ZOOM", String.format(Locale.US, "%.1fx", t.zoom ?: c.zoom), cell)
+        InfoCell("EV", if (caps != null && caps.exposureCompensationStep > 0f)
+            String.format(Locale.US, "%+.1f", c.exposureCompensation * caps.exposureCompensationStep) else "--", cell)
+        InfoCell("AE/AF", "${aeLabel(t.aeState, c)}/${afLabel(t.afState)}", cell)
+    }
+}
+
+/** Remaining free-session time, or null when the plan has no limit or nothing is streaming. */
+@Composable
+private fun rememberFreeRemaining(vm: CameraViewModel): String? {
+    val stats by vm.stats.collectAsStateWithLifecycle()
+    val tier by vm.tier.collectAsStateWithLifecycle()
+    val limit = PlanLimits.sessionLimitMs(tier) ?: return null
+    var now by remember { mutableLongStateOf(SystemClock.elapsedRealtime()) }
+    LaunchedEffect(stats.running) { while (stats.running) { now = SystemClock.elapsedRealtime(); delay(500) } }
+    if (!stats.running) return "FREE ${limit / 60_000} MIN"
+    val left = ((limit - (now - stats.startedAtElapsedMs)) / 1000).coerceAtLeast(0)
+    return String.format(Locale.US, "FREE %02d:%02d LEFT", left / 60, left % 60)
+}
+
+/** Compact NDI output strip for the vertical layout: status, start/stop, key stats, audio. */
+@Composable
+private fun NdiStrip(vm: CameraViewModel, onOpenPlans: () -> Unit) {
+    val ndi by vm.ndiStatus.collectAsStateWithLifecycle()
+    val stats by vm.stats.collectAsStateWithLifecycle()
+    val warnings by vm.warnings.collectAsStateWithLifecycle()
+    val settings by vm.settings.collectAsStateWithLifecycle()
+    val levels by vm.audioLevels.collectAsStateWithLifecycle()
+    var now by remember { mutableLongStateOf(SystemClock.elapsedRealtime()) }
+    LaunchedEffect(stats.running) { while (stats.running) { now = SystemClock.elapsedRealtime(); delay(500) } }
+    val live = ndi is NdiStatus.SourceActive || ndi is NdiStatus.SenderInitialized
+    val canStart = ndi is NdiStatus.LibraryReady || ndi is NdiStatus.TransmissionStopped || ndi is NdiStatus.SenderError
+    val free = rememberFreeRemaining(vm)
+
+    Column(Modifier.fillMaxWidth().background(Cine.Panel).padding(horizontal = 10.dp, vertical = 6.dp)) {
+        Row(verticalAlignment = Alignment.CenterVertically) {
+            val name = when (val s = ndi) {
+                is NdiStatus.SourceActive -> s.sourceName
+                is NdiStatus.SenderInitialized -> s.sourceName
+                else -> settings.sourceName
+            }
+            Column(Modifier.weight(1f)) {
+                Text(name, style = Cine.value.copy(fontSize = 11.sp), maxLines = 1)
+                val (pill, col) = ndiPill(ndi)
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    StatusPill(pill, col, Modifier.padding(top = 3.dp))
+                    if (free != null) {
+                        Text(free, color = Cine.Warn, fontFamily = Cine.Mono, fontSize = 10.sp,
+                            modifier = Modifier.padding(start = 6.dp, top = 3.dp).clickable(onClick = onOpenPlans))
+                    }
+                }
+            }
+            AudioMeter(levels, Modifier.width(26.dp).height(40.dp).padding(horizontal = 4.dp))
+            Box(
+                Modifier.width(132.dp).height(44.dp)
+                    .background(if (live) Cine.Rec else if (canStart) Cine.Accent else Cine.Faint, RoundedCornerShape(3.dp))
+                    .clickable(enabled = live || canStart) { if (live) vm.stop() else vm.start() },
+                contentAlignment = Alignment.Center,
+            ) {
+                Text(if (live) "STOP STREAM" else "START STREAM", color = Color.Black, fontWeight = FontWeight.Black,
+                    fontFamily = Cine.Mono, fontSize = 13.sp)
+            }
+        }
+        val detail = when (val s = ndi) {
+            is NdiStatus.SdkNotInstalled -> s.detail
+            is NdiStatus.InitFailed -> s.detail
+            is NdiStatus.SenderError -> s.detail
+            else -> null
+        }
+        detail?.let { Text(it, color = Cine.Rec, fontSize = 10.sp, maxLines = 2) }
+        Row(Modifier.fillMaxWidth()) {
+            val dur = if (stats.running) (now - stats.startedAtElapsedMs) / 1000 else 0
+            InfoCell("TIME", String.format(Locale.US, "%02d:%02d:%02d", dur / 3600, (dur / 60) % 60, dur % 60), Modifier.weight(1.4f))
+            InfoCell("FPS", String.format(Locale.US, "%.1f", stats.currentFps), Modifier.weight(1f))
+            InfoCell("RX", (ndi as? NdiStatus.SourceActive)?.connections?.toString() ?: "0", Modifier.weight(0.7f))
+            InfoCell("DROP", stats.totalDropped.toString(), Modifier.weight(1f),
+                valueColor = if (stats.totalDropped > 0) Cine.Warn else Cine.Text)
+            InfoCell("TX", String.format(Locale.US, "%.0fM", stats.txBitsPerSecond / 1e6), Modifier.weight(1f))
+        }
+        warnings.firstOrNull()?.let { w -> Text("⚠ ${w.message}", color = Cine.Warn, fontSize = 10.sp, maxLines = 2) }
+    }
+}
+
+@Composable
+private fun TopStatusBar(vm: CameraViewModel, caps: CameraCapabilities?, compact: Boolean, onOpenSettings: () -> Unit) {
     val ndi by vm.ndiStatus.collectAsStateWithLifecycle()
     val net by vm.network.collectAsStateWithLifecycle()
     val health by vm.health.collectAsStateWithLifecycle()
@@ -124,14 +277,14 @@ private fun TopStatusBar(vm: CameraViewModel, caps: CameraCapabilities?, onOpenS
     ) {
         Text("NDI", color = Cine.Accent, fontWeight = FontWeight.Black, fontSize = 13.sp, fontFamily = Cine.Mono)
         Text(" CAM PRO", color = Cine.Text, fontWeight = FontWeight.Bold, fontSize = 13.sp, fontFamily = Cine.Mono)
-        Spacer(Modifier.width(14.dp))
-        Text("${Build.MODEL} · ${caps?.lens?.label ?: "--"}", style = Cine.label.copy(fontSize = 10.sp, color = Cine.Text), maxLines = 1,
-            modifier = Modifier.weight(1f))
+        Spacer(Modifier.width(if (compact) 6.dp else 14.dp))
+        Text(if (compact) "" else "${Build.MODEL} · ${caps?.lens?.label ?: "--"}", style = Cine.label.copy(fontSize = 10.sp, color = Cine.Text),
+            maxLines = 1, modifier = Modifier.weight(1f))
         val (txt, col) = ndiPill(ndi)
         StatusPill(txt, col)
         Spacer(Modifier.width(10.dp))
         val netText = when (net.transport) {
-            Transport.WIFI -> "WIFI ${net.wifiRssiDbm?.let { "${it}dBm" } ?: ""}"
+            Transport.WIFI -> if (compact) "WIFI" else "WIFI ${net.wifiRssiDbm?.let { "${it}dBm" } ?: ""}"
             Transport.ETHERNET -> "ETH"
             Transport.NONE -> "NO NET"
             else -> net.transport.name
@@ -142,7 +295,7 @@ private fun TopStatusBar(vm: CameraViewModel, caps: CameraCapabilities?, onOpenS
         Spacer(Modifier.width(10.dp))
         Text(health.batteryTempC?.let { String.format(Locale.US, "%.0f°C", it) } ?: "--°C",
             style = Cine.value.copy(fontSize = 11.sp, color = if (health.throttling) Cine.Rec else Cine.Text))
-        if (health.thermalStatus > 0) {
+        if (health.thermalStatus > 0 && !compact) {
             Spacer(Modifier.width(6.dp))
             StatusPill(health.thermalLabel, if (health.throttling) Cine.Rec else Cine.Warn)
         }
@@ -211,7 +364,10 @@ private fun afLabel(s: Int?) = when (s) {
 @Composable
 private fun PreviewArea(vm: CameraViewModel, caps: CameraCapabilities?) {
     val previewSize by vm.previewSize.collectAsStateWithLifecycle()
-    val settings by vm.settings.collectAsStateWithLifecycle()
+    val rawSettings by vm.settings.collectAsStateWithLifecycle()
+    val tier by vm.tier.collectAsStateWithLifecycle()
+    val settings = if (Feature.PRO_OVERLAYS.availableIn(tier)) rawSettings
+        else rawSettings.copy(overlays = rawSettings.overlays.copy(zebra = false, peaking = false, safeAreas = false, histogram = false))
     val overlay by vm.overlay.collectAsStateWithLifecycle()
     val tel by vm.telemetry.collectAsStateWithLifecycle()
     val context = LocalContext.current
@@ -298,7 +454,7 @@ private fun CameraStateBanner(state: CameraState, modifier: Modifier) {
 }
 
 @Composable
-private fun NdiPanel(vm: CameraViewModel) {
+private fun NdiPanel(vm: CameraViewModel, onOpenPlans: () -> Unit) {
     val ndi by vm.ndiStatus.collectAsStateWithLifecycle()
     val stats by vm.stats.collectAsStateWithLifecycle()
     val warnings by vm.warnings.collectAsStateWithLifecycle()
@@ -321,6 +477,9 @@ private fun NdiPanel(vm: CameraViewModel) {
             Text(name, style = Cine.value.copy(fontSize = 11.sp), maxLines = 2)
             val (pill, col) = ndiPill(ndi)
             StatusPill(pill, col, Modifier.padding(vertical = 4.dp))
+            rememberFreeRemaining(vm)?.let { f ->
+                Text(f, color = Cine.Warn, fontFamily = Cine.Mono, fontSize = 10.sp, modifier = Modifier.clickable(onClick = onOpenPlans))
+            }
             val detail = when (val s = ndi) {
                 is NdiStatus.SdkNotInstalled -> s.detail
                 is NdiStatus.InitFailed -> s.detail
@@ -373,23 +532,26 @@ private fun NdiPanel(vm: CameraViewModel) {
 
 @Composable
 private fun BottomBar(
-    caps: CameraCapabilities?, t: CaptureTelemetry, c: CameraControlState, active: Panel?,
+    vm: CameraViewModel, caps: CameraCapabilities?, c: CameraControlState, active: Panel?,
     onSelect: (Panel) -> Unit, onTorch: () -> Unit,
 ) {
+    vm.tier.collectAsStateWithLifecycle().value // recompose lock icons when the plan changes
+    val noExp = !vm.has(Feature.MANUAL_EXPOSURE)
     Row(Modifier.fillMaxWidth().height(52.dp).background(Cine.Panel).horizontalScroll(rememberScrollState()),
         verticalAlignment = Alignment.CenterVertically) {
         ControlButton("LENS", caps?.lens?.label?.substringBefore(" (") ?: "--", active == Panel.LENS, caps != null) { onSelect(Panel.LENS) }
         ControlButton("FOCUS", when (c.focusMode) { FocusMode.CONTINUOUS -> "AF-C"; FocusMode.AUTO_LOCKED -> "AF-L"; FocusMode.MANUAL -> "MF" },
             active == Panel.FOCUS, caps != null && (caps.autofocusAvailable || caps.manualFocusAvailable)) { onSelect(Panel.FOCUS) }
-        ControlButton("ISO", if (c.autoExposure) "AUTO" else c.iso.toString(), active == Panel.ISO, caps?.manualIsoAvailable == true) { onSelect(Panel.ISO) }
+        ControlButton("ISO", if (c.autoExposure) "AUTO" else c.iso.toString(), active == Panel.ISO, caps?.manualIsoAvailable == true,
+            locked = noExp) { onSelect(Panel.ISO) }
         ControlButton("SHUTTER", if (c.autoExposure) "AUTO" else ModeSelection.shutterLabel(c.exposureTimeNs), active == Panel.SHUTTER,
-            caps?.manualShutterAvailable == true) { onSelect(Panel.SHUTTER) }
+            caps?.manualShutterAvailable == true, locked = noExp) { onSelect(Panel.SHUTTER) }
         ControlButton("WB", if (c.whiteBalanceMode == WhiteBalanceMode.KELVIN) "${c.kelvin}K" else c.awbPreset.label, active == Panel.WB,
             caps != null && (caps.awbPresets.size > 1 || caps.manualPostProcessing)) { onSelect(Panel.WB) }
         ControlButton("ZOOM", String.format(Locale.US, "%.1fx", c.zoom), active == Panel.ZOOM,
             caps != null && caps.zoomRange.upper > caps.zoomRange.lower) { onSelect(Panel.ZOOM) }
         ControlButton("EV", String.format(Locale.US, "%+d", c.exposureCompensation), active == Panel.EV,
-            caps?.exposureCompensationRange != null && c.autoExposure) { onSelect(Panel.EV) }
+            caps?.exposureCompensationRange != null && c.autoExposure, locked = noExp) { onSelect(Panel.EV) }
         ControlButton("TOOLS", "VIEW", active == Panel.TOOLS, true) { onSelect(Panel.TOOLS) }
         ControlButton("STAB", listOfNotNull(if (c.ois && caps?.oisAvailable == true) "OIS" else null,
             if (c.eis && caps?.eisAvailable == true) "EIS" else null).joinToString("+").ifEmpty { "OFF" },
@@ -401,53 +563,69 @@ private fun BottomBar(
 @Composable
 private fun ControlPanel(
     panel: Panel, vm: CameraViewModel, caps: CameraCapabilities?, t: CaptureTelemetry, c: CameraControlState,
-    overlays: com.ndicamera.professional.settings.OverlaySettings,
+    overlays: com.ndicamera.professional.settings.OverlaySettings, onOpenPlans: () -> Unit,
 ) {
     val lenses by vm.lenses.collectAsStateWithLifecycle()
+    vm.tier.collectAsStateWithLifecycle().value
     if (caps == null) return
+    val noExp = !vm.has(Feature.MANUAL_EXPOSURE)
+    val noMf = !vm.has(Feature.MANUAL_FOCUS)
+    val noWb = !vm.has(Feature.MANUAL_WB)
+    val noOv = !vm.has(Feature.PRO_OVERLAYS)
+    /** Runs [action] when [locked] is false, otherwise opens the plans screen. */
+    fun gate(locked: Boolean, action: () -> Unit): () -> Unit = { if (locked) onOpenPlans() else action() }
     Column(Modifier.fillMaxWidth().background(Cine.Black.copy(alpha = 0.85f)).padding(8.dp)) {
         val chipRow: @Composable (content: @Composable () -> Unit) -> Unit = { content ->
             Row(Modifier.horizontalScroll(rememberScrollState()), verticalAlignment = Alignment.CenterVertically) { content() }
         }
         when (panel) {
             Panel.LENS -> {
-                chipRow { lenses.forEach { l -> CineChip(l.label, caps.lens?.key == l.key) { vm.selectLens(l) } } }
+                chipRow {
+                    lenses.forEach { l ->
+                        val lk = !vm.lensAllowed(l)
+                        CineChip(l.label, caps.lens?.key == l.key, locked = lk, onClick = gate(lk) { vm.selectLens(l) })
+                    }
+                }
                 chipRow {
                     caps.modes?.forEach { m ->
                         val cur = (vm.cameraState.value as? CameraState.Running)?.mode
-                        CineChip(m.label, cur == m) { vm.selectMode(m) }
+                        val lk = !vm.modeAllowed(m)
+                        CineChip(m.label, cur == m, locked = lk, onClick = gate(lk) { vm.selectMode(m) })
                     }
                 }
             }
             Panel.FOCUS -> {
                 chipRow {
                     CineChip("AF-C", c.focusMode == FocusMode.CONTINUOUS, caps.autofocusAvailable == true) { vm.setFocusMode(FocusMode.CONTINUOUS) }
-                    CineChip("AF LOCK", c.focusMode == FocusMode.AUTO_LOCKED, caps.autofocusAvailable == true) { vm.setFocusMode(FocusMode.AUTO_LOCKED) }
-                    CineChip("MF", c.focusMode == FocusMode.MANUAL, caps.manualFocusAvailable == true) { vm.setFocusMode(FocusMode.MANUAL) }
+                    CineChip("AF LOCK", c.focusMode == FocusMode.AUTO_LOCKED, caps.autofocusAvailable == true, locked = noMf,
+                        onClick = gate(noMf) { vm.setFocusMode(FocusMode.AUTO_LOCKED) })
+                    CineChip("MF", c.focusMode == FocusMode.MANUAL, caps.manualFocusAvailable == true, locked = noMf,
+                        onClick = gate(noMf) { vm.setFocusMode(FocusMode.MANUAL) })
                     Text("  Tap preview: focus · Long-press: focus lock", style = Cine.label)
                 }
-                if (caps.manualFocusAvailable == true) {
+                if (caps.manualFocusAvailable == true && !noMf) {
                     LabeledSlider("FOCUS ${if (c.focusDistanceDiopters <= 0.01f) "∞" else String.format(Locale.US, "%.2fm", 1f / c.focusDistanceDiopters)}",
                         c.focusDistanceDiopters, 0f..caps.minFocusDistanceDiopters, enabled = c.focusMode == FocusMode.MANUAL) { vm.setFocusDistance(it) }
                 }
             }
             Panel.ISO -> {
                 chipRow {
-                    CineChip("AUTO", c.autoExposure) { vm.setManualExposure(!c.autoExposure) }
+                    CineChip("AUTO", c.autoExposure, locked = noExp, onClick = gate(noExp) { vm.setManualExposure(!c.autoExposure) })
                     val r = caps.isoRange
                     if (r != null) ModeSelection.isoStops(r.lower, r.upper).forEach { iso ->
-                        CineChip(iso.toString(), !c.autoExposure && c.iso == iso, caps.manualIsoAvailable) { vm.setManualExposure(true); vm.setIso(iso) }
+                        CineChip(iso.toString(), !c.autoExposure && c.iso == iso, caps.manualIsoAvailable, locked = noExp,
+                            onClick = gate(noExp) { vm.setManualExposure(true); vm.setIso(iso) })
                     }
                 }
             }
             Panel.SHUTTER -> {
                 val fps = (vm.cameraState.value as? CameraState.Running)?.mode?.fps ?: 30
                 chipRow {
-                    CineChip("AUTO", c.autoExposure) { vm.setManualExposure(!c.autoExposure) }
+                    CineChip("AUTO", c.autoExposure, locked = noExp, onClick = gate(noExp) { vm.setManualExposure(!c.autoExposure) })
                     val r = caps.exposureTimeRangeNs
                     if (r != null) ModeSelection.shutterStops(r.lower, minOf(r.upper, 1_000_000_000L / fps)).forEach { ns ->
                         CineChip("${ModeSelection.shutterLabel(ns)} ${ModeSelection.shutterAngle(ns, fps)}°", !c.autoExposure && c.exposureTimeNs == ns,
-                            caps.manualShutterAvailable) { vm.setManualExposure(true); vm.setShutter(ns) }
+                            caps.manualShutterAvailable, locked = noExp, onClick = gate(noExp) { vm.setManualExposure(true); vm.setShutter(ns) })
                     }
                 }
             }
@@ -456,9 +634,12 @@ private fun ControlPanel(
                     caps.awbPresets?.forEach { p ->
                         CineChip(p.label, c.whiteBalanceMode == WhiteBalanceMode.PRESET && c.awbPreset == p) { vm.setAwbPreset(p) }
                     }
-                    CineChip("AWB LOCK", c.awbLock, caps.awbLockAvailable == true && c.whiteBalanceMode == WhiteBalanceMode.PRESET) { vm.setAwbLock(!c.awbLock) }
+                    CineChip("AWB LOCK", c.awbLock, caps.awbLockAvailable == true && c.whiteBalanceMode == WhiteBalanceMode.PRESET,
+                        locked = noWb, onClick = gate(noWb) { vm.setAwbLock(!c.awbLock) })
                 }
-                if (caps.manualWhiteBalanceKelvinAvailable == true) {
+                if (noWb) {
+                    LockedNote("Kelvin, tint and AWB lock need the Pro plan or higher.", onOpenPlans)
+                } else if (caps.manualWhiteBalanceKelvinAvailable == true) {
                     LabeledSlider("KELVIN ~${c.kelvin}K (approx.)", c.kelvin.toFloat(), 2000f..10000f) { vm.setKelvin((it / 50).toInt() * 50) }
                     LabeledSlider(String.format(Locale.US, "TINT %+.2f", c.tint), c.tint, -1f..1f,
                         enabled = c.whiteBalanceMode == WhiteBalanceMode.KELVIN) { vm.setTint(it) }
@@ -480,19 +661,21 @@ private fun ControlPanel(
             Panel.EV -> {
                 val r = caps.exposureCompensationRange
                 if (r != null) {
+                    if (noExp) LockedNote("EV compensation and AE lock need the Basic plan or higher.", onOpenPlans)
                     LabeledSlider(String.format(Locale.US, "EV %+.1f", c.exposureCompensation * caps.exposureCompensationStep),
-                        c.exposureCompensation.toFloat(), r.lower.toFloat()..r.upper.toFloat(), enabled = c.autoExposure,
+                        c.exposureCompensation.toFloat(), r.lower.toFloat()..r.upper.toFloat(), enabled = c.autoExposure && !noExp,
                         steps = (r.upper - r.lower - 1).coerceAtLeast(0)) { vm.setEv(Math.round(it)) }
-                    chipRow { CineChip("AE LOCK", c.aeLock, caps.aeLockAvailable && c.autoExposure) { vm.setAeLock(!c.aeLock) } }
+                    chipRow { CineChip("AE LOCK", c.aeLock, caps.aeLockAvailable && c.autoExposure, locked = noExp, onClick = gate(noExp) { vm.setAeLock(!c.aeLock) }) }
                 }
             }
             Panel.TOOLS -> chipRow {
-                CineChip("ZEBRA ${overlays.zebraLevel}%", overlays.zebra) { vm.updateOverlays { it.copy(zebra = !it.zebra) } }
-                CineChip("PEAKING", overlays.peaking) { vm.updateOverlays { it.copy(peaking = !it.peaking) } }
+                CineChip("ZEBRA ${overlays.zebraLevel}%", overlays.zebra && !noOv, locked = noOv,
+                    onClick = gate(noOv) { vm.updateOverlays { it.copy(zebra = !it.zebra) } })
+                CineChip("PEAKING", overlays.peaking && !noOv, locked = noOv, onClick = gate(noOv) { vm.updateOverlays { it.copy(peaking = !it.peaking) } })
                 CineChip("THIRDS", overlays.thirds) { vm.updateOverlays { it.copy(thirds = !it.thirds) } }
                 CineChip("CROSS", overlays.crosshair) { vm.updateOverlays { it.copy(crosshair = !it.crosshair) } }
-                CineChip("SAFE", overlays.safeAreas) { vm.updateOverlays { it.copy(safeAreas = !it.safeAreas) } }
-                CineChip("HISTO", overlays.histogram) { vm.updateOverlays { it.copy(histogram = !it.histogram) } }
+                CineChip("SAFE", overlays.safeAreas && !noOv, locked = noOv, onClick = gate(noOv) { vm.updateOverlays { it.copy(safeAreas = !it.safeAreas) } })
+                CineChip("HISTO", overlays.histogram && !noOv, locked = noOv, onClick = gate(noOv) { vm.updateOverlays { it.copy(histogram = !it.histogram) } })
             }
             Panel.STAB -> chipRow {
                 CineChip("OIS", c.ois, caps.oisAvailable == true) { vm.setOis(!c.ois) }
@@ -504,6 +687,12 @@ private fun ControlPanel(
             }
         }
     }
+}
+
+@Composable
+private fun LockedNote(text: String, onOpenPlans: () -> Unit) {
+    Text("🔒 $text  UPGRADE ›", color = Cine.Warn, fontSize = 11.sp, fontFamily = Cine.Mono,
+        modifier = Modifier.padding(vertical = 6.dp).clickable(onClick = onOpenPlans))
 }
 
 @Composable

@@ -37,7 +37,7 @@ fun InfoCell(label: String, value: String, modifier: Modifier = Modifier, valueC
 
 /** Selectable chip used for presets and options. Disabled chips are visibly greyed and inert. */
 @Composable
-fun CineChip(text: String, selected: Boolean, enabled: Boolean = true, onClick: () -> Unit) {
+fun CineChip(text: String, selected: Boolean, enabled: Boolean = true, locked: Boolean = false, onClick: () -> Unit) {
     val border = when {
         !enabled -> Cine.Line
         selected -> Cine.Accent
@@ -52,13 +52,14 @@ fun CineChip(text: String, selected: Boolean, enabled: Boolean = true, onClick: 
             .clickable(enabled = enabled, onClick = onClick)
             .padding(horizontal = 10.dp, vertical = 6.dp),
     ) {
-        Text(text, fontFamily = Cine.Mono, fontSize = 12.sp, color = if (selected && enabled) Cine.Accent else Cine.Text)
+        Text(if (locked) "🔒 $text" else text, fontFamily = Cine.Mono, fontSize = 12.sp,
+            color = when { locked -> Cine.Dim; selected && enabled -> Cine.Accent; else -> Cine.Text })
     }
 }
 
 /** Bottom bar button: label + current value. */
 @Composable
-fun ControlButton(label: String, value: String, active: Boolean, enabled: Boolean, modifier: Modifier = Modifier, onClick: () -> Unit) {
+fun ControlButton(label: String, value: String, active: Boolean, enabled: Boolean, modifier: Modifier = Modifier, locked: Boolean = false, onClick: () -> Unit) {
     Column(
         modifier
             .fillMaxHeight()
@@ -69,8 +70,8 @@ fun ControlButton(label: String, value: String, active: Boolean, enabled: Boolea
         verticalArrangement = Arrangement.Center,
         horizontalAlignment = Alignment.CenterHorizontally,
     ) {
-        Text(label, style = Cine.label.copy(color = if (active) Cine.Accent else Cine.Dim))
-        Text(value, style = Cine.value.copy(fontSize = 12.sp), maxLines = 1)
+        Text(if (locked) "🔒$label" else label, style = Cine.label.copy(color = if (active) Cine.Accent else Cine.Dim))
+        Text(value, style = Cine.value.copy(fontSize = 12.sp, color = if (locked) Cine.Dim else Cine.Text), maxLines = 1)
         Box(Modifier.padding(top = 3.dp).width(18.dp).height(2.dp).background(if (active) Cine.Accent else Color.Transparent))
     }
 }

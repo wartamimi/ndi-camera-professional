@@ -12,7 +12,7 @@ object NdiNative {
     @JvmStatic external fun nativeSendVideo(
         handle: Long,
         y: ByteBuffer, yRowStride: Int, u: ByteBuffer, v: ByteBuffer, uvRowStride: Int, uvPixelStride: Int,
-        width: Int, height: Int, rotation: Int, mirror: Boolean, fpsN: Int, fpsD: Int, timecode: Long,
+        width: Int, height: Int, rotation: Int, mirror: Boolean, fpsN: Int, fpsD: Int, timecode: Long, watermark: Boolean,
     ): Int
     @JvmStatic external fun nativeSendAudio(handle: Long, interleaved: FloatArray, frames: Int, channels: Int, sampleRate: Int, timecode: Long): Int
     @JvmStatic external fun nativeGetConnections(handle: Long): Int

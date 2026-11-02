@@ -63,7 +63,7 @@ JNIEXPORT jint JNICALL
 Java_com_ndicamera_professional_ndi_NdiNative_nativeSendVideo(
         JNIEnv* env, jclass, jlong handle,
         jobject yBuf, jint yRowStride, jobject uBuf, jobject vBuf, jint uvRowStride, jint uvPixelStride,
-        jint width, jint height, jint rotation, jboolean mirror, jint fpsN, jint fpsD, jlong timecode) {
+        jint width, jint height, jint rotation, jboolean mirror, jint fpsN, jint fpsD, jlong timecode, jboolean watermark) {
     NdiSender* s = from_handle(handle);
     if (!s) return -1;
     ndicam::Yuv420Planes p{};
@@ -77,7 +77,7 @@ Java_com_ndicamera_professional_ndi_NdiNative_nativeSendVideo(
     p.width = width;
     p.height = height;
     ndicam::Transform t{rotation, mirror == JNI_TRUE};
-    return s->send_video(p, t, fpsN, fpsD, timecode);
+    return s->send_video(p, t, fpsN, fpsD, timecode, watermark == JNI_TRUE ? "NDI CAMERA PRO - FREE" : nullptr);
 }
 
 JNIEXPORT jint JNICALL

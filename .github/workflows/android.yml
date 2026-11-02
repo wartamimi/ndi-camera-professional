@@ -37,8 +37,8 @@ jobs:
           # The GitHub-hosted Ubuntu image ships the Android SDK at $ANDROID_HOME.
           SDKM="$(ls -d "$ANDROID_HOME"/cmdline-tools/*/bin/sdkmanager | sort -V | tail -n1)"
           yes | "$SDKM" --licenses > /dev/null || true
-          "$SDKM" --install "platforms;android-35" "build-tools;35.0.0" "ndk;${NDK_VERSION}" "cmake;${CMAKE_VERSION}" > /dev/null
-          echo "Installed:"; "$SDKM" --list_installed | grep -E "ndk|cmake|platforms;android-35|build-tools;35"
+          "$SDKM" --install "platforms;android-36" "build-tools;35.0.0" "ndk;${NDK_VERSION}" "cmake;${CMAKE_VERSION}" > /dev/null
+          echo "Installed:"; "$SDKM" --list_installed | grep -E "ndk|cmake|platforms;android-36|build-tools;35"
 
       - uses: gradle/actions/wrapper-validation@v4
       - uses: gradle/actions/setup-gradle@v4
@@ -161,7 +161,7 @@ jobs:
         run: |
           SDKM="$(ls -d "$ANDROID_HOME"/cmdline-tools/*/bin/sdkmanager | sort -V | tail -n1)"
           yes | "$SDKM" --licenses > /dev/null || true
-          "$SDKM" --install "platforms;android-35" "build-tools;35.0.0" "ndk;${NDK_VERSION}" "cmake;${CMAKE_VERSION}" > /dev/null
+          "$SDKM" --install "platforms;android-36" "build-tools;35.0.0" "ndk;${NDK_VERSION}" "cmake;${CMAKE_VERSION}" > /dev/null
       - uses: gradle/actions/setup-gradle@v4
 
       - name: Prepare release signing (optional)
@@ -177,15 +177,28 @@ jobs:
           fi
 
       - name: Build NDI debug APK
-        run: ./gradlew --no-daemon --stacktrace -Pndi.abis="${NDI_ABIS}" testDebugUnitTest assembleDebug
+        run: ./gradlew --no-daemon --stacktrace -Pndi.abis="${NDI_ABIS}" -PversionCode="${{ github.run_number }}" testDebugUnitTest assembleDebug
 
-      - name: Build NDI release APK
+      - name: Build NDI release APK + Google Play bundle (AAB)
         if: env.HAS_SIGNING == 'true'
         env:
           SIGNING_STORE_PASSWORD: ${{ secrets.SIGNING_STORE_PASSWORD }}
           SIGNING_KEY_ALIAS: ${{ secrets.SIGNING_KEY_ALIAS }}
           SIGNING_KEY_PASSWORD: ${{ secrets.SIGNING_KEY_PASSWORD }}
-        run: ./gradlew --no-daemon --stacktrace -Pndi.abis="${NDI_ABIS}" assembleRelease
+        run: ./gradlew --no-daemon --stacktrace -Pndi.abis="${NDI_ABIS}" -PversionCode="${{ github.run_number }}" assembleRelease bundleRelease
+
+      - name: Check 16 KB page-size alignment of native libraries
+        run: |
+          set -euo pipefail
+          bad=0
+          for so in third_party/ndi-sdk/lib/*/libndi.so $(find app/build/intermediates -path "*stripped_native_libs*" -name "*.so" | sort -u); do
+            [ -f "$so" ] || continue
+            case "$so" in *x86/*|*armeabi-v7a/*) continue ;; esac   # 16 KB applies to 64-bit ABIs
+            min="$(readelf -lW "$so" | awk '$1=="LOAD"{print $NF}' | sort -u | head -n1)"
+            echo "$so LOAD align: $min"
+            if [ $((min)) -lt $((0x4000)) ]; then echo "::warning file=$so::LOAD segments aligned to $min (< 16 KB). Google Play requires 16 KB alignment for 64-bit libraries."; bad=1; fi
+          done
+          [ "$bad" = 0 ] && echo "All checked 64-bit libraries are 16 KB aligned."
 
       - name: Verify APK contents (NDI bridge + libndi present)
         run: |
@@ -193,6 +206,12 @@ jobs:
           mkdir -p out
           cp app/build/outputs/apk/debug/app-debug.apk out/NDICameraPro-NDI-debug.apk
           if [ -f app/build/outputs/apk/release/app-release.apk ]; then cp app/build/outputs/apk/release/app-release.apk out/NDICameraPro-NDI-release.apk; fi
+          if [ -f app/build/outputs/bundle/release/app-release.aab ]; then
+            cp app/build/outputs/bundle/release/app-release.aab out/NDICameraPro-NDI-release-play.aab
+            for abi in $(echo "${NDI_ABIS}" | tr ',' ' '); do
+              unzip -l out/NDICameraPro-NDI-release-play.aab | grep -q "base/lib/$abi/libndi.so" || { echo "::error::AAB is missing base/lib/$abi/libndi.so"; exit 1; }
+            done
+          fi
           for apk in out/*.apk; do
             echo "== $apk"; unzip -l "$apk" | grep "lib/"
             for abi in $(echo "${NDI_ABIS}" | tr ',' ' '); do
@@ -208,5 +227,7 @@ jobs:
       - uses: actions/upload-artifact@v4
         with:
           name: ndi-apk
-          path: out/*.apk
+          path: |
+            out/*.apk
+            out/*.aab
           retention-days: 30

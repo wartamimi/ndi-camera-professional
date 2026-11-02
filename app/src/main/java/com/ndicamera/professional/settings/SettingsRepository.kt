@@ -35,6 +35,8 @@ class SettingsRepository(private val context: Context, private val scope: Corout
         val height = intPreferencesKey("height")
         val fps = intPreferencesKey("fps")
         val orientation = stringPreferencesKey("output_orientation")
+        val uiOrientation = stringPreferencesKey("ui_orientation")
+        val onboarding = booleanPreferencesKey("onboarding_done")
         val mirrorFront = booleanPreferencesKey("mirror_front")
         val audioEnabled = booleanPreferencesKey("audio_enabled")
         val audioDevice = intPreferencesKey("audio_device")
@@ -68,6 +70,8 @@ class SettingsRepository(private val context: Context, private val scope: Corout
             height = this[K.height] ?: d.height,
             fps = this[K.fps] ?: d.fps,
             outputOrientation = this[K.orientation]?.let { runCatching { OutputOrientation.valueOf(it) }.getOrNull() } ?: d.outputOrientation,
+            uiOrientation = this[K.uiOrientation]?.let { runCatching { UiOrientation.valueOf(it) }.getOrNull() } ?: d.uiOrientation,
+            onboardingDone = this[K.onboarding] ?: d.onboardingDone,
             mirrorFrontOutput = this[K.mirrorFront] ?: d.mirrorFrontOutput,
             audioEnabled = this[K.audioEnabled] ?: d.audioEnabled,
             audioDeviceId = this[K.audioDevice] ?: d.audioDeviceId,
@@ -110,6 +114,8 @@ class SettingsRepository(private val context: Context, private val scope: Corout
                 p[K.height] = s.height
                 p[K.fps] = s.fps
                 p[K.orientation] = s.outputOrientation.name
+                p[K.uiOrientation] = s.uiOrientation.name
+                p[K.onboarding] = s.onboardingDone
                 p[K.mirrorFront] = s.mirrorFrontOutput
                 p[K.audioEnabled] = s.audioEnabled
                 p[K.audioDevice] = s.audioDeviceId

@@ -3,6 +3,7 @@ package com.ndicamera.professional.di
 import android.content.Context
 import android.hardware.camera2.CameraManager
 import com.ndicamera.professional.audio.AudioEngine
+import com.ndicamera.professional.billing.BillingRepository
 import com.ndicamera.professional.camera.CameraEngine
 import com.ndicamera.professional.camera.CameraRepository
 import com.ndicamera.professional.camera.NativeFrameAnalyzer
@@ -37,7 +38,8 @@ class AppContainer(context: Context) {
     val networkMonitor = NetworkMonitor(appContext).also { it.start() }
     val systemMonitor = SystemMonitor(appContext).also { it.start() }
     val analyzer = NativeFrameAnalyzer()
+    val billing = BillingRepository(appContext)
     val streamController = StreamController(
-        ndiRuntime, cameraEngine, audioEngine, networkMonitor, settings, analyzer, appScope, ndiDispatcher,
+        ndiRuntime, cameraEngine, audioEngine, networkMonitor, settings, analyzer, appScope, ndiDispatcher, billing.tier,
     ).also { it.serviceControl = StreamingService.controller(appContext) }
 }

@@ -28,6 +28,7 @@ import com.ndicamera.professional.di.AppContainer
 import com.ndicamera.professional.domain.model.CameraState
 import com.ndicamera.professional.domain.model.NdiStatus
 import com.ndicamera.professional.domain.model.OutputOrientation
+import com.ndicamera.professional.settings.UiOrientation
 import com.ndicamera.professional.ui.camera.ndiPill
 import com.ndicamera.professional.ui.components.AudioMeter
 import com.ndicamera.professional.ui.components.CineChip
@@ -47,7 +48,8 @@ fun SettingsHome(onBack: () -> Unit, navigate: (String) -> Unit) = SettingsPage(
     NavRow("Audio", "Input device, sample rate, channels, gain, A/V offset") { navigate("settings/audio") }
     NavRow("Network diagnostics", "Interface, IP, link, transmit rate, warnings") { navigate("network") }
     NavRow("Performance diagnostics", "Frame delivery, drops, thermal, memory, capabilities") { navigate("diagnostics") }
-    NavRow("About", "Version, NDI® SDK, licences") { navigate("about") }
+    NavRow("Paket & Harga", "Free, Basic, Pro, Ultra, Max · pulihkan pembelian") { navigate("plans") }
+    NavRow("About", "Version, NDI® SDK, licences, developer") { navigate("about") }
 }
 
 @Composable
@@ -69,6 +71,11 @@ fun CameraSettingsScreen(c: AppContainer, onBack: () -> Unit) = SettingsPage("Ca
     ChipRow { caps?.modes?.forEach { m -> CineChip(m.label, running == m) { c.streamController.selectMode(m) } } }
     Text("Only resolution/fps pairs whose YUV stream duration and AE fps range are supported are listed. " +
         "4K NDI output is listed only if the sensor delivers YUV at that size and rate.", color = Cine.Dim, fontSize = 12.sp)
+    SectionTitle("Interface orientation")
+    ChipRow {
+        UiOrientation.entries.forEach { o -> CineChip(o.label, s.uiOrientation == o) { c.settings.update { it.copy(uiOrientation = o) } } }
+    }
+    Text("Vertical is the default. Auto-rotate follows the device, including landscape.", color = Cine.Dim, fontSize = 12.sp)
     SectionTitle("NDI output orientation")
     ChipRow {
         OutputOrientation.entries.forEach { o -> CineChip(o.label, s.outputOrientation == o) { c.settings.update { it.copy(outputOrientation = o) } } }

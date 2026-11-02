@@ -25,8 +25,16 @@ import com.ndicamera.professional.ui.theme.Cine
 fun AboutScreen(c: AppContainer, onBack: () -> Unit) = SettingsPage("About", onBack) {
     val version by c.streamController.ndiVersion.collectAsStateWithLifecycle()
     val ctx = LocalContext.current
+    val tier by c.billing.tier.collectAsStateWithLifecycle()
     Text("NDI Camera Professional", color = Cine.Text, fontSize = 20.sp, fontWeight = FontWeight.Bold)
     Text("Professional mobile broadcast camera", color = Cine.Dim, fontSize = 13.sp)
+    Text("Dibuat oleh Munawar Tamimi", color = Cine.Accent, fontSize = 15.sp, fontWeight = FontWeight.Bold,
+        modifier = Modifier.padding(top = 8.dp))
+    SectionTitle("Pengembang")
+    KeyValue("Developer", "Munawar Tamimi")
+    KeyValue("Paket aktif", tier.label)
+    Text("© ${java.util.Calendar.getInstance().get(java.util.Calendar.YEAR)} Munawar Tamimi. All rights reserved.",
+        color = Cine.Dim, fontSize = 12.sp)
     SectionTitle("Build")
     KeyValue("Version", "${BuildConfig.VERSION_NAME} (${BuildConfig.VERSION_CODE})")
     KeyValue("Build type", BuildConfig.BUILD_TYPE + if (BuildConfig.NDI_VALIDATION_BUILD) " · CI validation (no NDI SDK)" else "")

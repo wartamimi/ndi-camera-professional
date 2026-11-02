@@ -63,14 +63,55 @@ void copy_identity(const Yuv420Planes& s, uint8_t* dst) {
     }
 }
 
+// Rotates one 8-bit plane (element size 1 or interleaved pairs of 2) by 90/270 without mirroring,
+// in tiles. Source pixel (sx, sy) of an sw x sh plane goes to:
+//   90:  out(sh-1-sy, sx)      270: out(sy, sw-1-sx)
+template <int kElem>
+void rotate_plane(const uint8_t* src, int src_stride, int src_pixel_stride, const uint8_t* src2,
+                  int sw, int sh, uint8_t* out, int out_stride, int rotation) {
+    constexpr int T = 32;
+    for (int ty = 0; ty < sh; ty += T) {
+        const int ey = ty + T < sh ? ty + T : sh;
+        for (int tx = 0; tx < sw; tx += T) {
+            const int ex = tx + T < sw ? tx + T : sw;
+            for (int sy = ty; sy < ey; ++sy) {
+                const uint8_t* r1 = src + static_cast<size_t>(sy) * src_stride;
+                const uint8_t* r2 = kElem == 2 ? src2 + static_cast<size_t>(sy) * src_stride : nullptr;
+                for (int sx = tx; sx < ex; ++sx) {
+                    int ox, oy;
+                    if (rotation == 90) { ox = sh - 1 - sy; oy = sx; } else { ox = sy; oy = sw - 1 - sx; }
+                    uint8_t* d = out + static_cast<size_t>(oy) * out_stride + static_cast<size_t>(ox) * kElem;
+                    d[0] = r1[static_cast<size_t>(sx) * src_pixel_stride];
+                    if (kElem == 2) d[1] = r2[static_cast<size_t>(sx) * src_pixel_stride];
+                }
+            }
+        }
+    }
+}
+
 void copy_transformed(const Yuv420Planes& s, const Transform& t, uint8_t* dst, int ow, int oh) {
+    if (!t.mirror && (t.rotation == 90 || t.rotation == 270)) {
+        rotate_plane<1>(s.y, s.y_row_stride, 1, nullptr, s.width, s.height, dst, ow, t.rotation);
+        rotate_plane<2>(s.u, s.uv_row_stride, s.uv_pixel_stride, s.v, s.width / 2, s.height / 2,
+                        dst + static_cast<size_t>(ow) * oh, ow, t.rotation);
+        return;
+    }
     const int sw = s.width, sh = s.height;
     int sx, sy;
-    for (int y = 0; y < oh; ++y) {
-        uint8_t* d = dst + static_cast<size_t>(y) * ow;
-        for (int x = 0; x < ow; ++x) {
-            map_coord(x, y, ow, sw, sh, t, &sx, &sy);
-            d[x] = s.y[static_cast<size_t>(sy) * s.y_row_stride + sx];
+    // Luma in 32x32 tiles: rotations by 90/270 read source columns, and tiling keeps both the
+    // source and destination working sets inside the L1 cache.
+    constexpr int T = 32;
+    for (int ty = 0; ty < oh; ty += T) {
+        const int ey = ty + T < oh ? ty + T : oh;
+        for (int tx = 0; tx < ow; tx += T) {
+            const int ex = tx + T < ow ? tx + T : ow;
+            for (int y = ty; y < ey; ++y) {
+                uint8_t* d = dst + static_cast<size_t>(y) * ow;
+                for (int x = tx; x < ex; ++x) {
+                    map_coord(x, y, ow, sw, sh, t, &sx, &sy);
+                    d[x] = s.y[static_cast<size_t>(sy) * s.y_row_stride + sx];
+                }
+            }
         }
     }
     uint8_t* duv = dst + static_cast<size_t>(ow) * oh;

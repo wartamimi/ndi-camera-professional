@@ -29,6 +29,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.core.splashscreen.SplashScreen.Companion.installSplashScreen
 import androidx.core.view.WindowCompat
 import androidx.core.view.WindowInsetsCompat
 import androidx.core.view.WindowInsetsControllerCompat
@@ -36,14 +37,16 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
-import androidx.navigation.compose.currentBackStackEntryAsState
 import androidx.navigation.compose.rememberNavController
 import com.ndicamera.professional.NdiCameraApp
 import com.ndicamera.professional.camera.OrientationMath
+import com.ndicamera.professional.settings.UiOrientation
 import com.ndicamera.professional.ui.about.AboutScreen
 import com.ndicamera.professional.ui.camera.CameraScreen
 import com.ndicamera.professional.ui.camera.CameraViewModel
 import com.ndicamera.professional.ui.diagnostics.NetworkDiagnosticsScreen
+import com.ndicamera.professional.ui.onboarding.OnboardingScreen
+import com.ndicamera.professional.ui.plans.PlansScreen
 import com.ndicamera.professional.ui.diagnostics.PerformanceDiagnosticsScreen
 import com.ndicamera.professional.ui.settings.AudioSettingsScreen
 import com.ndicamera.professional.ui.settings.CameraSettingsScreen
@@ -56,7 +59,7 @@ class MainActivity : ComponentActivity() {
     private val container get() = (application as NdiCameraApp).container
     private var permissionsGranted by mutableStateOf(false)
     private var orientationListener: OrientationEventListener? = null
-    private var snapped = 270
+    private var snapped = 0
 
     private val permissionLauncher = registerForActivityResult(ActivityResultContracts.RequestMultiplePermissions()) {
         permissionsGranted = hasCameraPermission()
@@ -65,6 +68,7 @@ class MainActivity : ComponentActivity() {
     }
 
     override fun onCreate(savedInstanceState: Bundle?) {
+        installSplashScreen()
         super.onCreate(savedInstanceState)
         enableEdgeToEdge()
         WindowCompat.getInsetsController(window, window.decorView).apply {
@@ -84,14 +88,28 @@ class MainActivity : ComponentActivity() {
         setContent {
             NdiCameraTheme {
                 val settings by container.settings.settings.collectAsStateWithLifecycle()
+                LaunchedEffect(settings.uiOrientation) {
+                    requestedOrientation = when (settings.uiOrientation) {
+                        UiOrientation.PORTRAIT -> ActivityInfo.SCREEN_ORIENTATION_PORTRAIT
+                        UiOrientation.LANDSCAPE -> ActivityInfo.SCREEN_ORIENTATION_SENSOR_LANDSCAPE
+                        UiOrientation.AUTO -> ActivityInfo.SCREEN_ORIENTATION_FULL_USER
+                    }
+                }
                 LaunchedEffect(settings.keepScreenOn) {
                     if (settings.keepScreenOn) window.addFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON)
                     else window.clearFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON)
                 }
-                if (!permissionsGranted) PermissionScreen { requestPermissions() } else AppNav()
+                when {
+                    !settings.onboardingDone -> OnboardingScreen {
+                        container.settings.update { it.copy(onboardingDone = true) }
+                        if (!hasCameraPermission()) requestPermissions()
+                    }
+                    !permissionsGranted -> PermissionScreen { requestPermissions() }
+                    else -> AppNav()
+                }
             }
         }
-        if (!permissionsGranted) requestPermissions()
+        if (!permissionsGranted && container.settings.settings.value.onboardingDone) requestPermissions()
     }
 
     override fun onResume() {
@@ -115,18 +133,11 @@ class MainActivity : ComponentActivity() {
     @Composable
     private fun AppNav() {
         val nav = rememberNavController()
-        val entry by nav.currentBackStackEntryAsState()
-        val route = entry?.destination?.route
-        LaunchedEffect(route) {
-            // Landscape-first shooting interface; settings follow the device (portrait friendly).
-            requestedOrientation = if (route == null || route == "camera") ActivityInfo.SCREEN_ORIENTATION_SENSOR_LANDSCAPE
-            else ActivityInfo.SCREEN_ORIENTATION_FULL_USER
-        }
         val c = container
         NavHost(nav, startDestination = "camera", modifier = Modifier.fillMaxSize().background(Cine.Black)) {
             composable("camera") {
                 val vm: CameraViewModel = viewModel(factory = CameraViewModel.Factory(c))
-                CameraScreen(vm) { nav.navigate("settings") }
+                CameraScreen(vm, onOpenSettings = { nav.navigate("settings") }, onOpenPlans = { nav.navigate("plans") })
             }
             val back: () -> Unit = { nav.popBackStack() }
             composable("settings") { SettingsHome(back) { nav.navigate(it) } }
@@ -136,6 +147,7 @@ class MainActivity : ComponentActivity() {
             composable("network") { NetworkDiagnosticsScreen(c, back) }
             composable("diagnostics") { PerformanceDiagnosticsScreen(c, back) }
             composable("about") { AboutScreen(c, back) }
+            composable("plans") { PlansScreen(c, back) }
         }
     }
 }

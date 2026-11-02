@@ -73,15 +73,16 @@ val hasReleaseSigning = releaseStoreFile != null && File(releaseStoreFile).isFil
 
 android {
     namespace = "com.ndicamera.professional"
-    compileSdk = 35
+    compileSdk = 36
     ndkVersion = "27.2.12479018"
 
     defaultConfig {
         applicationId = "com.ndicamera.professional"
         minSdk = 29
-        targetSdk = 35
-        versionCode = 1
-        versionName = "0.1.0"
+        targetSdk = 36
+        // CI passes -PversionCode=<run number> so every uploaded bundle has a higher versionCode.
+        versionCode = (findProperty("versionCode") as String?)?.toIntOrNull() ?: 1
+        versionName = "1.0.0"
 
         buildConfigField("boolean", "NDI_VALIDATION_BUILD", validationBuild.toString())
 
@@ -94,6 +95,8 @@ android {
                 cppFlags += listOf("-std=c++17", "-fno-exceptions", "-fno-rtti")
                 arguments += listOf(
                     "-DANDROID_STL=c++_shared",
+                    // 16 KB page-size compatibility (required by Google Play for Android 15+ devices).
+                    "-DANDROID_SUPPORT_FLEXIBLE_PAGE_SIZES=ON",
                     "-DNDI_VALIDATION_BUILD=${if (validationBuild) "ON" else "OFF"}",
                     "-DNDI_SDK_DIR=${ndiSdkDir.absolutePath.replace('\\', '/')}",
                 )
@@ -167,6 +170,8 @@ dependencies {
     implementation(libs.androidx.navigation.compose)
     implementation(libs.androidx.datastore.preferences)
     implementation(libs.kotlinx.coroutines.android)
+    implementation(libs.play.billing)
+    implementation(libs.androidx.core.splashscreen)
     debugImplementation(libs.androidx.compose.ui.tooling)
 
     testImplementation(libs.junit)

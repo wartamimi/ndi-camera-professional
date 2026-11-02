@@ -88,11 +88,11 @@ private class NativeNdiSender(private var handle: Long) : NdiSender {
         if (h == 0L) default else block(h)
     }
 
-    override fun sendVideo(frame: YuvFrame, rotation: Int, mirror: Boolean, fpsN: Int, fpsD: Int, timecode100ns: Long): Int =
+    override fun sendVideo(frame: YuvFrame, rotation: Int, mirror: Boolean, fpsN: Int, fpsD: Int, timecode100ns: Long, watermark: Boolean): Int =
         withHandle(-1) { h ->
             NdiNative.nativeSendVideo(
                 h, frame.y, frame.yRowStride, frame.u, frame.v, frame.uvRowStride, frame.uvPixelStride,
-                frame.width, frame.height, rotation, mirror, fpsN, fpsD, timecode100ns,
+                frame.width, frame.height, rotation, mirror, fpsN, fpsD, timecode100ns, watermark,
             )
         }
 

@@ -8,6 +8,8 @@
 #include "audio/audio_utils.h"
 #include "camera/frame_analyzer.h"
 #include "camera/frame_converter.h"
+#include "camera/watermark.h"
+#include <chrono>
 
 using namespace ndicam;
 
@@ -117,7 +119,57 @@ static void test_audio() {
     CHECK(s[0] == 0.f && lv.peak[0] == 0.f);
 }
 
+static void test_watermark() {
+    const int w = 640, h = 360;
+    std::vector<uint8_t> img(nv12_size(w, h), 128);
+    burn_watermark_nv12(img.data(), w, h, "NDI CAMERA PRO - FREE");
+    int white = 0, dark = 0;
+    for (int i = 0; i < w * h; ++i) { if (img[i] == 235) ++white; if (img[i] < 60) ++dark; }
+    CHECK(white > 100);
+    CHECK(dark > 100);
+    CHECK(img[0] == 128);                       // top-left untouched
+    CHECK(img[(h - 1) * w + (w / 2)] == 128);   // outside the label box (bottom centre-left)
+    burn_watermark_nv12(nullptr, w, h, "X");    // must not crash
+}
+
+static void test_tiled_rotation_matches_reference() {
+    Img im = make(64, 34, 2);
+    std::vector<uint8_t> out(nv12_size(34, 64));
+    CHECK(yuv420_to_nv12(planes(im), Transform{90, false}, out.data(), 34, 64));
+    for (int y = 0; y < 64; ++y) for (int x = 0; x < 34; ++x) {
+        const int sx = y, sy = 34 - 1 - x;
+        if (out[y * 34 + x] != static_cast<uint8_t>(sx + 10 * sy)) { CHECK(false); return; }
+    }
+    // Chroma: output chroma (cx, cy) of the 17x32 chroma plane comes from source chroma (cy, 17-1-cx).
+    const uint8_t* uv = out.data() + 34 * 64;
+    for (int cy = 0; cy < 32; ++cy) for (int cx = 0; cx < 17; ++cx) {
+        const int scx = cy, scy = 17 - 1 - cx;
+        if (uv[cy * 34 + 2 * cx] != 100 + scx || uv[cy * 34 + 2 * cx + 1] != 200 + scy) { CHECK(false); return; }
+    }
+    // 270 chroma: output (cx, cy) comes from source (32-1-cy, cx).
+    CHECK(yuv420_to_nv12(planes(im), Transform{270, false}, out.data(), 34, 64));
+    for (int cy = 0; cy < 32; ++cy) for (int cx = 0; cx < 17; ++cx) {
+        const int scx = 32 - 1 - cy, scy = cx;
+        if (uv[cy * 34 + 2 * cx] != 100 + scx || uv[cy * 34 + 2 * cx + 1] != 200 + scy) { CHECK(false); return; }
+    }
+}
+
+static void bench() {
+    Img im = make(1920, 1080, 2);
+    std::vector<uint8_t> out(nv12_size(1920, 1080));
+    for (int rot : {0, 90}) {
+        int ow, oh; output_size(1920, 1080, rot, &ow, &oh);
+        auto t0 = std::chrono::steady_clock::now();
+        for (int i = 0; i < 20; ++i) yuv420_to_nv12(planes(im), Transform{rot, false}, out.data(), ow, oh);
+        auto ms = std::chrono::duration<double, std::milli>(std::chrono::steady_clock::now() - t0).count() / 20;
+        std::printf("bench 1080p rotation %d: %.2f ms/frame (host)\n", rot, ms);
+    }
+}
+
 int main() {
+    test_watermark();
+    test_tiled_rotation_matches_reference();
+    bench();
     test_identity(2, false);
     test_identity(2, true);
     test_identity(1, false);

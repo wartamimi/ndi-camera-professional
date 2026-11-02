@@ -2,6 +2,8 @@ package com.ndicamera.professional.ui.camera
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.ViewModelProvider
+import com.ndicamera.professional.billing.Feature
+import com.ndicamera.professional.billing.PlanLimits
 import com.ndicamera.professional.di.AppContainer
 import com.ndicamera.professional.domain.model.AntibandingMode
 import com.ndicamera.professional.domain.model.AwbPreset
@@ -29,6 +31,13 @@ class CameraViewModel(val c: AppContainer) : ViewModel() {
     val audioState = c.audioEngine.state
     val settings = c.settings.settings
     val overlay = c.analyzer.output
+    val tier = c.billing.tier
+    val sessionLimitReached = c.streamController.sessionLimitReached
+
+    fun has(f: Feature) = f.availableIn(tier.value)
+    fun lensAllowed(l: LensDescriptor) = c.streamController.lensAllowed(l)
+    fun modeAllowed(m: VideoMode) = PlanLimits.modeAllowed(tier.value, m.resolution, m.fps)
+    fun dismissSessionLimit() = c.streamController.dismissSessionLimit()
 
     fun onVisible(visible: Boolean) = c.streamController.onUiVisibilityChanged(visible)
     fun start() = c.streamController.startStreaming()
@@ -36,31 +45,32 @@ class CameraViewModel(val c: AppContainer) : ViewModel() {
     fun selectLens(l: LensDescriptor) = c.streamController.selectLens(l)
     fun selectMode(m: VideoMode) = c.streamController.selectMode(m)
     fun setMuted(m: Boolean) = c.streamController.setMuted(m)
-    fun focusAt(x: Float, y: Float, lock: Boolean) = c.cameraEngine.focusAt(x, y, lock)
+    fun focusAt(x: Float, y: Float, lock: Boolean) = c.cameraEngine.focusAt(x, y, lock && has(Feature.MANUAL_FOCUS))
 
     private fun update(f: (CameraControlState) -> CameraControlState) = c.cameraEngine.setControls(f)
 
     /** Switching to manual exposure starts from the values the camera is currently using. */
     fun setManualExposure(manual: Boolean) {
+        if (manual && !has(Feature.MANUAL_EXPOSURE)) return
         val t = telemetry.value
         update { s ->
             if (manual) s.copy(autoExposure = false, iso = t.iso ?: s.iso, exposureTimeNs = t.exposureTimeNs ?: s.exposureTimeNs)
             else s.copy(autoExposure = true)
         }
     }
-    fun setIso(iso: Int) = update { it.copy(autoExposure = false, iso = iso) }
-    fun setShutter(ns: Long) = update { it.copy(autoExposure = false, exposureTimeNs = ns) }
-    fun setEv(ev: Int) = update { it.copy(exposureCompensation = ev) }
-    fun setAeLock(on: Boolean) = update { it.copy(aeLock = on) }
-    fun setFocusMode(m: FocusMode) = update { s ->
+    fun setIso(iso: Int) = if (!has(Feature.MANUAL_EXPOSURE)) Unit else update { it.copy(autoExposure = false, iso = iso) }
+    fun setShutter(ns: Long) = if (!has(Feature.MANUAL_EXPOSURE)) Unit else update { it.copy(autoExposure = false, exposureTimeNs = ns) }
+    fun setEv(ev: Int) = if (!has(Feature.MANUAL_EXPOSURE)) Unit else update { it.copy(exposureCompensation = ev) }
+    fun setAeLock(on: Boolean) = if (!has(Feature.MANUAL_EXPOSURE)) Unit else update { it.copy(aeLock = on) }
+    fun setFocusMode(m: FocusMode) = if (m != FocusMode.CONTINUOUS && !has(Feature.MANUAL_FOCUS)) Unit else update { s ->
         val d = if (m == FocusMode.MANUAL) telemetry.value.focusDistanceDiopters ?: s.focusDistanceDiopters else s.focusDistanceDiopters
         s.copy(focusMode = m, focusDistanceDiopters = d, focusPoint = if (m == FocusMode.MANUAL) null else s.focusPoint)
     }
-    fun setFocusDistance(d: Float) = update { it.copy(focusMode = FocusMode.MANUAL, focusDistanceDiopters = d) }
+    fun setFocusDistance(d: Float) = if (!has(Feature.MANUAL_FOCUS)) Unit else update { it.copy(focusMode = FocusMode.MANUAL, focusDistanceDiopters = d) }
     fun setAwbPreset(p: AwbPreset) = update { it.copy(whiteBalanceMode = WhiteBalanceMode.PRESET, awbPreset = p) }
-    fun setKelvin(k: Int) = update { it.copy(whiteBalanceMode = WhiteBalanceMode.KELVIN, kelvin = k) }
-    fun setTint(t: Float) = update { it.copy(tint = t) }
-    fun setAwbLock(on: Boolean) = update { it.copy(awbLock = on) }
+    fun setKelvin(k: Int) = if (!has(Feature.MANUAL_WB)) Unit else update { it.copy(whiteBalanceMode = WhiteBalanceMode.KELVIN, kelvin = k) }
+    fun setTint(t: Float) = if (!has(Feature.MANUAL_WB)) Unit else update { it.copy(tint = t) }
+    fun setAwbLock(on: Boolean) = if (!has(Feature.MANUAL_WB)) Unit else update { it.copy(awbLock = on) }
     fun setZoom(z: Float) = update { it.copy(zoom = z) }
     fun setTorch(on: Boolean) = update { it.copy(torch = on) }
     fun setOis(on: Boolean) = update { it.copy(ois = on) }

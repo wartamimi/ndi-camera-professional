@@ -14,6 +14,7 @@ add_compile_options(-Wall -Wextra -Werror=return-type -O3 -fvisibility=hidden)
 add_library(mediacore STATIC
         camera/frame_converter.cpp
         camera/frame_analyzer.cpp
+        camera/watermark.cpp
         audio/audio_utils.cpp)
 target_include_directories(mediacore PUBLIC ${CMAKE_CURRENT_SOURCE_DIR})
 

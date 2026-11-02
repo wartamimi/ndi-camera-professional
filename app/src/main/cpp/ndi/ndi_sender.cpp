@@ -3,6 +3,7 @@
 #include <android/log.h>
 
 #include "audio/audio_utils.h"
+#include "camera/watermark.h"
 
 #define LOG_TAG "NdiSender"
 #define LOGI(...) __android_log_print(ANDROID_LOG_INFO, LOG_TAG, __VA_ARGS__)
@@ -38,7 +39,7 @@ NdiSender::~NdiSender() {
     }
 }
 
-int NdiSender::send_video(const Yuv420Planes& src, const Transform& t, int fps_n, int fps_d, int64_t timecode) {
+int NdiSender::send_video(const Yuv420Planes& src, const Transform& t, int fps_n, int fps_d, int64_t timecode, const char* watermark) {
     std::lock_guard<std::mutex> lock(video_mtx_);
     if (!inst_) return -1;
     int ow, oh;
@@ -58,6 +59,7 @@ int NdiSender::send_video(const Yuv420Planes& src, const Transform& t, int fps_n
     }
     uint8_t* dst = buffers_[next_buffer_].data();
     if (!yuv420_to_nv12(src, t, dst, ow, oh)) return -2;
+    if (watermark && watermark[0]) burn_watermark_nv12(dst, ow, oh, watermark);
 
     NDIlib_video_frame_v2_t f;
     f.xres = ow;

@@ -43,6 +43,8 @@ class FramePipeline(
     @Volatile var deviceOrientationProvider: () -> Int = { 270 }
     @Volatile var mirrorFrontCamera: Boolean = false
     @Volatile var analysisEnabled: Boolean = true
+    /** Free plan: burn the watermark into the NDI output. */
+    @Volatile var watermark: Boolean = true
 
     val framesSent = AtomicLong()
     val framesDroppedPipeline = AtomicLong()
@@ -100,7 +102,7 @@ class FramePipeline(
             val frame = YuvFrame(y.buffer, y.rowStride, u.buffer, v.buffer, u.rowStride, u.pixelStride, p.image.width, p.image.height)
             val t0 = SystemClock.elapsedRealtimeNanos()
             val rc = s.sendVideo(frame, rotation, front && mirrorFrontCamera, p.mode.fps * 1000, 1000,
-                clock.videoTimecode(p.ts, p.boottime))
+                clock.videoTimecode(p.ts, p.boottime), watermark)
             lastConvertMs = (SystemClock.elapsedRealtimeNanos() - t0) / 1e6f
             if (rc == 0) framesSent.incrementAndGet() else sendErrors.incrementAndGet()
         }

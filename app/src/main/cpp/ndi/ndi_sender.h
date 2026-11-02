@@ -20,7 +20,7 @@ public:
     ~NdiSender();
 
     // Returns 0 on success, negative on error.
-    int send_video(const Yuv420Planes& src, const Transform& t, int fps_n, int fps_d, int64_t timecode);
+    int send_video(const Yuv420Planes& src, const Transform& t, int fps_n, int fps_d, int64_t timecode, const char* watermark);
     int send_audio_interleaved(const float* interleaved, int frames, int channels, int sample_rate, int64_t timecode);
 
     int connections(uint32_t timeout_ms);

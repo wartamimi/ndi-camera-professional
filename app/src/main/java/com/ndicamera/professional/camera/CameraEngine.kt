@@ -81,6 +81,11 @@ class CameraEngine(private val context: Context, private val repository: CameraR
     val controls: StateFlow<CameraControlState> = _controls.asStateFlow()
 
     @Volatile var frameSink: FrameSink? = null
+    /** Which video modes the current plan permits (set by StreamController). */
+    @Volatile var modeFilter: (VideoMode) -> Boolean = { true }
+
+    /** Currently running mode, or null. */
+    val currentMode: VideoMode? get() = (_state.value as? CameraState.Running)?.mode
 
     // ---- camera-thread-confined state ----
     private var device: CameraDevice? = null
@@ -135,6 +140,7 @@ class CameraEngine(private val context: Context, private val repository: CameraR
     }
 
     fun setControls(update: (CameraControlState) -> CameraControlState) = cameraHandler.post {
+        if (caps == null) { _controls.value = update(_controls.value); return@post }
         _controls.value = update(_controls.value)
         applyRepeating()
     }
@@ -179,7 +185,9 @@ class CameraEngine(private val context: Context, private val repository: CameraR
             _state.value = CameraState.Error("Cannot read camera ${target.label}: ${e.message}", true)
             return
         }
-        val selected = requested?.takeIf { it in c.modes } ?: ModeSelection.defaultMode(c.modes)
+        // Plan limits: only modes allowed by the active plan may be opened.
+        val allowed = c.modes.filter(modeFilter).ifEmpty { c.modes.filter { it.resolution.pixels <= 1280L * 720L && it.fps <= 30 } }
+        val selected = requested?.takeIf { it in allowed } ?: ModeSelection.defaultMode(allowed)
         if (selected == null) {
             _state.value = CameraState.Error("No supported YUV video mode on ${target.label}", false)
             return

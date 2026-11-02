@@ -5,6 +5,12 @@ import android.util.Log
 import com.ndicamera.professional.audio.AudioConfig
 import com.ndicamera.professional.audio.AudioEngine
 import com.ndicamera.professional.audio.AudioSink
+import com.ndicamera.professional.billing.Feature
+import com.ndicamera.professional.billing.PlanLimits
+import com.ndicamera.professional.billing.Tier
+import com.ndicamera.professional.domain.model.FocusMode
+import com.ndicamera.professional.domain.model.LensFacing
+import com.ndicamera.professional.domain.model.WhiteBalanceMode
 import com.ndicamera.professional.camera.AnalyzerSettings
 import com.ndicamera.professional.camera.CameraEngine
 import com.ndicamera.professional.camera.NativeFrameAnalyzer
@@ -55,6 +61,8 @@ class StreamController(
     private val analyzer: NativeFrameAnalyzer,
     private val scope: CoroutineScope,
     private val ndiDispatcher: CoroutineDispatcher,
+    /** Active Google Play plan; drives every feature limit. */
+    val tier: StateFlow<Tier>,
 ) {
     val clock = MediaClock()
     val pipeline = FramePipeline(clock, analyzer)
@@ -72,6 +80,13 @@ class StreamController(
 
     var serviceControl: ForegroundServiceControl? = null
 
+    /** Set when a Free session was stopped by the time limit; cleared on the next start. */
+    private val _sessionLimitReached = MutableStateFlow(false)
+    val sessionLimitReached: StateFlow<Boolean> = _sessionLimitReached.asStateFlow()
+
+    fun has(f: Feature): Boolean = f.availableIn(tier.value)
+    fun dismissSessionLimit() { _sessionLimitReached.value = false }
+
     @Volatile private var sender: NdiSender? = null
     private val audioBuffersSent = java.util.concurrent.atomic.AtomicLong()
     private val audioErrors = java.util.concurrent.atomic.AtomicLong()
@@ -80,7 +95,7 @@ class StreamController(
     private var uiVisible = false
     private var startedAt = 0L
     private var restarts = 0
-    private var deviceOrientation = 270
+    private var deviceOrientation = 0
     private var lastLandscape = 270
     private var lastPortrait = 0
     private var libraryReady = false
@@ -89,6 +104,7 @@ class StreamController(
 
     init {
         camera.frameSink = pipeline
+        camera.modeFilter = { m -> PlanLimits.modeAllowed(tier.value, m.resolution, m.fps) }
         pipeline.deviceOrientationProvider = {
             com.ndicamera.professional.camera.OrientationMath.constrainDeviceOrientation(
                 deviceOrientation, lastLandscape, lastPortrait, settingsRepo.settings.value.outputOrientation)
@@ -100,6 +116,7 @@ class StreamController(
             }
         }
         scope.launch { initializeNdi() }
+        scope.launch { tier.collect { t -> enforcePlan(t) } }
         scope.launch {
             settingsRepo.settings.collect { s -> applySettings(s) }
         }
@@ -135,12 +152,18 @@ class StreamController(
     private var lastAudioConfig: AudioConfig? = null
     private fun applySettings(s: AppSettings) {
         val o = s.overlays
-        analyzer.settings = AnalyzerSettings(o.zebra, o.zebraThresholdCode, o.peaking, o.peakingThreshold, o.peakingColor)
+        val t = tier.value
+        val pro = Feature.PRO_OVERLAYS.availableIn(t)
+        analyzer.settings = AnalyzerSettings(o.zebra && pro, o.zebraThresholdCode, o.peaking && pro, o.peakingThreshold, o.peakingColor)
         pipeline.mirrorFrontCamera = s.mirrorFrontOutput
-        clock.audioOffsetNs = s.avOffsetMs * 1_000_000L
+        pipeline.watermark = PlanLimits.watermark(t)
+        clock.audioOffsetNs = if (Feature.AV_SYNC_OFFSET.availableIn(t)) s.avOffsetMs * 1_000_000L else 0L
         val cfg = AudioConfig(
-            enabled = s.audioEnabled, deviceId = s.audioDeviceId, sampleRate = s.audioSampleRate,
-            channels = s.audioChannels, gainDb = s.audioGainDb, muted = audio.currentConfig().muted, source = s.audioSource,
+            enabled = s.audioEnabled,
+            deviceId = if (Feature.EXTERNAL_AUDIO.availableIn(t)) s.audioDeviceId else 0,
+            sampleRate = s.audioSampleRate,
+            channels = minOf(s.audioChannels, PlanLimits.maxAudioChannels(t)),
+            gainDb = s.audioGainDb, muted = audio.currentConfig().muted, source = s.audioSource,
         )
         if (cfg != lastAudioConfig) {
             lastAudioConfig = cfg
@@ -171,7 +194,38 @@ class StreamController(
         } else if (!streaming) {
             camera.close()
             audio.stop()
+        } else if (!has(Feature.BACKGROUND_STREAMING)) {
+            // Free plan: streaming stops when the app leaves the screen.
+            stopStreaming()
         }
+    }
+
+    /** Applies plan limits immediately, e.g. after a purchase, restore or expired subscription. */
+    private fun enforcePlan(t: Tier) {
+        applySettings(settingsRepo.settings.value)
+        camera.setControls { c ->
+            var n = c
+            if (!Feature.MANUAL_EXPOSURE.availableIn(t)) n = n.copy(autoExposure = true, aeLock = false, exposureCompensation = 0)
+            if (!Feature.MANUAL_FOCUS.availableIn(t) && n.focusMode != FocusMode.CONTINUOUS) n = n.copy(focusMode = FocusMode.CONTINUOUS)
+            if (!Feature.MANUAL_WB.availableIn(t)) n = n.copy(whiteBalanceMode = WhiteBalanceMode.PRESET, awbLock = false)
+            n
+        }
+        val mode = camera.currentMode
+        val lens = camera.capabilities.value?.lens
+        if (lens != null && ((mode != null && !PlanLimits.modeAllowed(t, mode.resolution, mode.fps)) || !lensAllowed(lens, t))) {
+            val target = if (lensAllowed(lens, t)) lens else camera.lenses.value.firstOrNull { lensAllowed(it, t) } ?: lens
+            camera.open(target, mode)
+        }
+    }
+
+    /** Free/Basic: the primary rear and primary front camera only. */
+    fun lensAllowed(l: LensDescriptor, t: Tier = tier.value): Boolean {
+        if (Feature.ALL_LENSES.availableIn(t)) return true
+        if (l.physicalId != null) return false
+        val lenses = camera.lenses.value
+        val primaryBack = lenses.firstOrNull { it.facing == LensFacing.BACK && it.physicalId == null }
+        val primaryFront = lenses.firstOrNull { it.facing == LensFacing.FRONT && it.physicalId == null }
+        return l.key == primaryBack?.key || l.key == primaryFront?.key
     }
 
     fun ensureCameraOpen() {
@@ -188,18 +242,20 @@ class StreamController(
             var tries = 0
             while (lenses.isEmpty() && tries++ < 20) { delay(50); lenses = camera.lenses.value }
             val s = settingsRepo.settings.value
-            val lens = lenses.firstOrNull { it.key == s.lensKey } ?: lenses.firstOrNull() ?: return@launch
+            val lens = lenses.firstOrNull { it.key == s.lensKey && lensAllowed(it) } ?: lenses.firstOrNull() ?: return@launch
             camera.open(lens, VideoMode(Resolution(s.width, s.height), s.fps))
         }
     }
 
     fun selectLens(lens: LensDescriptor) {
+        if (!lensAllowed(lens)) return
         val s = settingsRepo.settings.value
         settingsRepo.update { it.copy(lensKey = lens.key) }
         camera.open(lens, VideoMode(Resolution(s.width, s.height), s.fps))
     }
 
     fun selectMode(mode: VideoMode) {
+        if (!PlanLimits.modeAllowed(tier.value, mode.resolution, mode.fps)) return
         settingsRepo.update { it.copy(width = mode.resolution.width, height = mode.resolution.height, fps = mode.fps) }
         val lens = camera.capabilities.value?.lens ?: return
         camera.open(lens, mode)
@@ -227,6 +283,7 @@ class StreamController(
                 network.setMulticastLock(false)
                 return@launch
             }
+            _sessionLimitReached.value = false
             pipeline.resetCounters()
             audioBuffersSent.set(0)
             audioErrors.set(0)
@@ -264,7 +321,9 @@ class StreamController(
     private suspend fun createSenderWithRetry(s: AppSettings): NdiSender? {
         var attempt = 0
         while (scope.isActive && attempt < 5) {
-            val created = ndi.createSender(SenderConfig(AppSettings.sanitizeSourceName(s.sourceName), s.ndiGroups.ifBlank { null }, s.clockVideo))
+            val name = if (has(Feature.CUSTOM_SOURCE_NAME)) AppSettings.sanitizeSourceName(s.sourceName) else AppSettings.DEFAULT_SOURCE_NAME
+            val groups = if (has(Feature.NDI_GROUPS)) s.ndiGroups.ifBlank { null } else null
+            val created = ndi.createSender(SenderConfig(name, groups, s.clockVideo))
             if (created != null) {
                 sender = created
                 _ndiStatus.value = NdiStatus.SenderInitialized(created.sourceName() ?: s.sourceName)
@@ -313,7 +372,14 @@ class StreamController(
                 val fps = (frames - lastFrames) * 1000f / (now - lastT).coerceAtLeast(1)
                 lastFrames = frames; lastT = now
                 val connections = s.connections()
-                val tally = s.tally()
+                val tally = if (has(Feature.TALLY)) s.tally() else com.ndicamera.professional.domain.ndi.Tally(false, false)
+                PlanLimits.sessionLimitMs(tier.value)?.let { limit ->
+                    if (now - startedAt >= limit) {
+                        _sessionLimitReached.value = true
+                        stopStreaming()
+                        return@launch
+                    }
+                }
                 val name = s.sourceName() ?: settingsRepo.settings.value.sourceName
                 _ndiStatus.value = NdiStatus.SourceActive(name, connections.coerceAtLeast(0), tally.onProgram, tally.onPreview)
                 val dropped = pipeline.framesDroppedPipeline.get() + pipeline.framesDroppedCamera.get()

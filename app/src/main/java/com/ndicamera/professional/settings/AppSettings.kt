@@ -18,6 +18,9 @@ data class OverlaySettings(
     val peakingThreshold: Int get() = (110 - peakingSensitivity.coerceIn(0, 100)).coerceAtLeast(8)
 }
 
+/** Orientation of the app interface on the camera screen. */
+enum class UiOrientation(val label: String) { PORTRAIT("Vertical"), LANDSCAPE("Landscape"), AUTO("Auto-rotate") }
+
 data class AppSettings(
     val sourceName: String = DEFAULT_SOURCE_NAME,
     val ndiGroups: String = "",
@@ -27,7 +30,9 @@ data class AppSettings(
     val width: Int = 1920,
     val height: Int = 1080,
     val fps: Int = 30,
-    val outputOrientation: OutputOrientation = OutputOrientation.LANDSCAPE,
+    val outputOrientation: OutputOrientation = OutputOrientation.PORTRAIT,
+    val uiOrientation: UiOrientation = UiOrientation.PORTRAIT,
+    val onboardingDone: Boolean = false,
     val mirrorFrontOutput: Boolean = false,
     val audioEnabled: Boolean = true,
     val audioDeviceId: Int = 0,

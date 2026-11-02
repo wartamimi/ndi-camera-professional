@@ -13,3 +13,9 @@
 11. **Product name.** NDI's licensing page requires contacting NDI before using "NDI" in a product name. The launcher label is "NDI Camera Pro" pending that decision.
 12. **No local recording**; the app is a live NDI source only.
 13. **Instrumented (on-device) tests are not included**; unit tests cover pure logic and the native media core.
+
+## Plans and billing
+- Plan entitlements are checked on the device against Google Play purchase records. There is no server-side purchase-token verification, so a rooted or modified device can bypass the limits.
+- Prices appear only when the app is installed from a Google Play track and the products in docs/GOOGLE_PLAY.md are active. Otherwise the plans screen shows the suggested prices and no buy buttons.
+- The Free-plan watermark is burned into the NDI output in native code. On the in-app preview it is not drawn.
+- On large screens (smallest width ≥ 600 dp), Android 16 ignores the requested orientation for apps targeting API 36. The camera screen then picks the vertical or landscape layout from the actual window shape.

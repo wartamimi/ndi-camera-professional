@@ -9,7 +9,9 @@ Receivers: OBS Studio (with an NDI plugin), vMix, TriCaster, NDI Studio Monitor,
 | | |
 |---|---|
 | Package | `com.ndicamera.professional` |
-| Min / target SDK | Android 10 (API 29) / API 35 |
+| Min / target SDK | Android 10 (API 29) / API 36 (Google Play requirement) |
+| Plans | Free, Basic, Pro, Ultra (subscriptions), Max (lifetime) via Google Play Billing |
+| Developer | Munawar Tamimi |
 | ABIs | `arm64-v8a` (primary), `armeabi-v7a` |
 | Stack | Kotlin, Jetpack Compose, Camera2, AudioRecord, C++17, JNI, NDI SDK |
 
@@ -43,7 +45,7 @@ Without the SDK the build **fails with an explicit error**. For CI compile check
 `.github/workflows/android.yml` has two jobs:
 
 - **Validation build (no NDI SDK)**: native host unit tests (ASan/UBSan), Kotlin unit tests, a full Kotlin + C++ compile, lint, and the validation APK as an artifact.
-- **Production build (official NDI SDK)**: downloads your SDK copy from the `NDI_SDK_URL` secret, builds debug (and release when signing secrets exist), verifies `libndi.so` and `libndibridge.so` are inside the APK, and uploads `ndi-apk`. It fails clearly if the secret is missing.
+- **Production build (official NDI SDK)**: downloads your SDK copy from the `NDI_SDK_URL` secret, builds debug (and, when signing secrets exist, a release APK plus the Google Play AAB), checks 16 KB page alignment, verifies `libndi.so` and `libndibridge.so` are inside the APK, and uploads `ndi-apk`. It fails clearly if the secret is missing.
 
 Secrets: `NDI_SDK_URL`, optional `NDI_SDK_SHA256`, and for release signing `SIGNING_KEYSTORE_BASE64`,
 `SIGNING_STORE_PASSWORD`, `SIGNING_KEY_ALIAS`, `SIGNING_KEY_PASSWORD`. Optional variable `NDI_ABIS`.
@@ -58,3 +60,5 @@ Secrets: `NDI_SDK_URL`, optional `NDI_SDK_SHA256`, and for release signing `SIGN
 - [Device compatibility](docs/DEVICE_COMPATIBILITY.md)
 - [Known limitations](docs/KNOWN_LIMITATIONS.md)
 - [Test report](docs/TEST_REPORT.md)
+- [Google Play publishing, plans & pricing](docs/GOOGLE_PLAY.md)
+- [Privacy policy](docs/PRIVACY_POLICY.md)
