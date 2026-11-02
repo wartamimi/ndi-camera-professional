@@ -1,0 +1,21 @@
+# Gradle / Android Studio
+.gradle/
+build/
+/local.properties
+/.idea/
+*.iml
+.DS_Store
+captures/
+.externalNativeBuild/
+.cxx/
+*.apk
+*.aab
+
+# Signing material: never commit
+*.jks
+*.keystore
+keystore.properties
+
+# Proprietary NDI SDK: never commit (see docs/NDI_SDK_SETUP.md)
+/third_party/ndi-sdk/*
+!/third_party/ndi-sdk/README.md

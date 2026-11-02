@@ -1,0 +1,16 @@
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="108dp" android:height="108dp" android:viewportWidth="108" android:viewportHeight="108">
+    <!-- Camera body -->
+    <path android:fillColor="#FF1C1C1F" android:strokeColor="#FFE9E9EC" android:strokeWidth="2"
+        android:pathData="M30,40 h36 a4,4 0 0 1 4,4 v20 a4,4 0 0 1 -4,4 h-36 a4,4 0 0 1 -4,-4 v-20 a4,4 0 0 1 4,-4 z" />
+    <!-- Lens -->
+    <path android:fillColor="#FF070708" android:strokeColor="#FFE9E9EC" android:strokeWidth="2"
+        android:pathData="M48,54 m-9,0 a9,9 0 1 0 18,0 a9,9 0 1 0 -18,0" />
+    <!-- Signal arcs -->
+    <path android:strokeColor="#FFFF8A1F" android:strokeWidth="3" android:strokeLineCap="round" android:fillColor="#00000000"
+        android:pathData="M74,46 q6,8 0,16" />
+    <path android:strokeColor="#FFFF8A1F" android:strokeWidth="3" android:strokeLineCap="round" android:fillColor="#00000000"
+        android:pathData="M79,41 q10,13 0,26" />
+    <!-- Tally light -->
+    <path android:fillColor="#FFE5322D" android:pathData="M34,45 m-2.5,0 a2.5,2.5 0 1 0 5,0 a2.5,2.5 0 1 0 -5,0" />
+</vector>

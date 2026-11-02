@@ -1,0 +1,11 @@
+cmake_minimum_required(VERSION 3.16)
+project(mediacore_tests CXX)
+set(CMAKE_CXX_STANDARD 17)
+set(SRC ${CMAKE_CURRENT_SOURCE_DIR}/../app/src/main/cpp)
+add_executable(mediacore_test mediacore_test.cpp
+        ${SRC}/camera/frame_converter.cpp ${SRC}/camera/frame_analyzer.cpp ${SRC}/audio/audio_utils.cpp)
+target_include_directories(mediacore_test PRIVATE ${SRC})
+target_compile_options(mediacore_test PRIVATE -Wall -Wextra -fsanitize=address,undefined)
+target_link_options(mediacore_test PRIVATE -fsanitize=address,undefined)
+enable_testing()
+add_test(NAME mediacore COMMAND mediacore_test)
