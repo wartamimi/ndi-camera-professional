@@ -83,7 +83,8 @@ fun GuideOverlay(settings: OverlaySettings, focusPoint: Offset?, focusColor: Col
 fun Histogram(frame: OverlayFrame?, modifier: Modifier = Modifier) {
     Canvas(modifier) {
         drawRect(Color.Black.copy(alpha = 0.55f))
-        val hist = frame?.histogram ?: return@Canvas
+        if (frame == null) return@Canvas
+        val hist = frame.histogram
         var max = 1.0
         for (v in hist) if (v > 0) max = maxOf(max, kotlin.math.ln(1.0 + v))
         val path = Path()

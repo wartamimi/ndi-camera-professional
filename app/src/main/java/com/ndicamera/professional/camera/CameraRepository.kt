@@ -79,7 +79,7 @@ class CameraRepository(private val cameraManager: CameraManager) {
             ?.contains(CameraMetadata.LENS_OPTICAL_STABILIZATION_MODE_ON) == true
         val eis = chars.get(CameraCharacteristics.CONTROL_AVAILABLE_VIDEO_STABILIZATION_MODES)
             ?.contains(CameraMetadata.CONTROL_VIDEO_STABILIZATION_MODE_ON) == true
-        val antibanding = chars.get(CameraCharacteristics.CONTROL_AE_AVAILABLE_ANTIBANDING_MODES)?.mapNotNull {
+        val antibanding = chars.get(CameraCharacteristics.CONTROL_AE_AVAILABLE_ANTIBANDING_MODES)?.toList()?.mapNotNull {
             when (it) {
                 CameraMetadata.CONTROL_AE_ANTIBANDING_MODE_OFF -> AntibandingMode.OFF
                 CameraMetadata.CONTROL_AE_ANTIBANDING_MODE_50HZ -> AntibandingMode.HZ50

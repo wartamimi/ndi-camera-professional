@@ -83,11 +83,9 @@ private class NativeNdiSender(private var handle: Long) : NdiSender {
     // write lock so the native sender can never be destroyed while a call is in flight.
     private val rw = ReentrantReadWriteLock()
 
-    private inline fun <T> withHandle(default: T, block: (Long) -> T): T {
-        rw.read {
-            val h = handle
-            return if (h == 0L) default else block(h)
-        }
+    private inline fun <T> withHandle(default: T, block: (Long) -> T): T = rw.read {
+        val h = handle
+        if (h == 0L) default else block(h)
     }
 
     override fun sendVideo(frame: YuvFrame, rotation: Int, mirror: Boolean, fpsN: Int, fpsD: Int, timecode100ns: Long): Int =

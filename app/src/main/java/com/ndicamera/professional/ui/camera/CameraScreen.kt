@@ -12,7 +12,6 @@ import androidx.compose.foundation.gestures.detectTapGestures
 import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
-import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
@@ -218,8 +217,7 @@ private fun PreviewArea(vm: CameraViewModel, caps: CameraCapabilities?) {
     val context = LocalContext.current
     val config = LocalConfiguration.current
     val displayRotation = remember(config) {
-        val r = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) context.display?.rotation ?: 0
-        else @Suppress("DEPRECATION") (context.getSystemService(android.view.WindowManager::class.java)).defaultDisplay.rotation
+        val r = displayRotationOf(context)
         when (r) { Surface.ROTATION_90 -> 90; Surface.ROTATION_180 -> 180; Surface.ROTATION_270 -> 270; else -> 0 }
     }
     val front = caps?.lens?.facing == LensFacing.FRONT
@@ -230,7 +228,7 @@ private fun PreviewArea(vm: CameraViewModel, caps: CameraCapabilities?) {
     var focusAt by remember { mutableLongStateOf(0L) }
     LaunchedEffect(focusAt) { if (focusAt != 0L) { delay(2500); focusPoint = null } }
 
-    BoxWithConstraints(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+    Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
         Box(Modifier.aspectRatio(aspect).background(Color.Black)) {
             androidx.compose.runtime.key(previewSize) {
                 AndroidView(
@@ -280,6 +278,11 @@ private fun PreviewArea(vm: CameraViewModel, caps: CameraCapabilities?) {
         }
     }
 }
+
+@Suppress("DEPRECATION")
+private fun displayRotationOf(context: android.content.Context): Int =
+    if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) context.display?.rotation ?: Surface.ROTATION_0
+    else context.getSystemService(android.view.WindowManager::class.java).defaultDisplay.rotation
 
 @Composable
 private fun CameraStateBanner(state: CameraState, modifier: Modifier) {
