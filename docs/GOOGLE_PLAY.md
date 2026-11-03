@@ -89,3 +89,12 @@ The **Android CI** workflow can upload the signed AAB to Google Play. It always 
 4. **Run the workflow.** Actions › Android CI › Run workflow, choose `main` and a `play_track`
    (`internal` first). The `Upload AAB to Google Play (draft)` job uploads the bundle.
 5. In Play Console, open the draft release, add release notes and roll it out.
+
+### Store listing
+
+The listing text lives in `fastlane/metadata/android/id-ID/` (`title.txt`, `short_description.txt`,
+`full_description.txt`). Put the images in `fastlane/metadata/android/id-ID/images/`
+(see the README there). Start **Android CI** by hand with `update_listing` ticked to upload
+them with `fastlane supply`. This changes only the store listing, not any release.
+The app must already exist in Play Console, and the service account needs the
+*Manage store presence* permission.
