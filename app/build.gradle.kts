@@ -72,12 +72,12 @@ val hasReleaseSigning = releaseStoreFile != null && File(releaseStoreFile).isFil
     signingValue("keyPassword", "SIGNING_KEY_PASSWORD") != null
 
 android {
-    namespace = "com.ndicamera.professional"
+    namespace = "id.lcscam.app"
     compileSdk = 36
     ndkVersion = "27.2.12479018"
 
     defaultConfig {
-        applicationId = "com.ndicamera.professional"
+        applicationId = "id.lcscam.app"
         minSdk = 29
         targetSdk = 36
         // CI passes -PversionCode=<run number> so every uploaded bundle has a higher versionCode.

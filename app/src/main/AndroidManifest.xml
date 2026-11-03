@@ -20,13 +20,13 @@
     <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />
 
     <application
-        android:name=".NdiCameraApp"
+        android:name=".LcsCamApp"
         android:allowBackup="false"
         android:icon="@mipmap/ic_launcher"
         android:roundIcon="@mipmap/ic_launcher"
         android:label="@string/app_name"
         android:supportsRtl="true"
-        android:theme="@style/Theme.NdiCamera.Starting">
+        android:theme="@style/Theme.LcsCam.Starting">
 
         <activity
             android:name=".ui.MainActivity"

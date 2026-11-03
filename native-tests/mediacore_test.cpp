@@ -122,7 +122,7 @@ static void test_audio() {
 static void test_watermark() {
     const int w = 640, h = 360;
     std::vector<uint8_t> img(nv12_size(w, h), 128);
-    burn_watermark_nv12(img.data(), w, h, "NDI CAMERA PRO - FREE");
+    burn_watermark_nv12(img.data(), w, h, "LCS CAM - FREE");
     int white = 0, dark = 0;
     for (int i = 0; i < w * h; ++i) { if (img[i] == 235) ++white; if (img[i] < 60) ++dark; }
     CHECK(white > 100);

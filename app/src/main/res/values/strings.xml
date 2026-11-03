@@ -1,5 +1,5 @@
 <resources>
-    <string name="app_name">NDI Camera Pro</string>
+    <string name="app_name">LCS Cam</string>
     <string name="developer">Dibuat oleh Munawar Tamimi</string>
     <string name="notif_channel">NDI streaming</string>
     <string name="notif_title">NDI stream live</string>

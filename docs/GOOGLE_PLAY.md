@@ -15,7 +15,7 @@ Play Console.
 | Max | `ndicam_max_lifetime` (one-time product) | Rp1.499.000 one time | $99.99 |
 
 Each plan includes everything in the plan below it. The rules are defined in
-`app/src/main/java/com/ndicamera/professional/billing/Plans.kt`.
+`app/src/main/java/id/lcscam/app/billing/Plans.kt`.
 
 | Feature | Free | Basic | Pro | Ultra / Max |
 |---|---|---|---|---|
@@ -33,10 +33,10 @@ Each plan includes everything in the plan below it. The rules are defined in
 
 ## 2. Play Console setup
 
-1. **Create the app** with package `com.ndicamera.professional`. Debug builds use `.debug` and cannot be published.
+1. **Create the app** with package `id.lcscam.app`. Debug builds use `.debug` and cannot be published.
 2. **Upload a signed AAB to the Internal testing track.** Billing products can only be created after a bundle containing the billing library has been uploaded.
    - Set up the release keystore with these repository secrets: `SIGNING_KEYSTORE_BASE64`, `SIGNING_STORE_PASSWORD`, `SIGNING_KEY_ALIAS`, `SIGNING_KEY_PASSWORD`.
-   - CI then builds `NDICameraPro-NDI-release-play.aab`.
+   - CI then builds `LCSCam-NDI-release-play.aab`.
    - Its versionCode is the GitHub Actions run number.
    - Use **Play App Signing**.
 3. **Monetize › Products › Subscriptions.** Create `ndicam_basic`, `ndicam_pro` and `ndicam_ultra`.
@@ -64,7 +64,7 @@ Each plan includes everything in the plan below it. The rules are defined in
 
 ## 4. Trademark
 
-The app is published as **LCS Cam**, so the name itself does not contain "NDI". The listing still names NDI® to describe compatibility, with the trademark notice. Earlier the product name contained "NDI". NDI's brand guidelines require **written approval from NDI (Vizrt NDI AB)** before you use "NDI" in an app name on a store. Apply through ndi.video before your production release, or choose a name without "NDI" (for example "… Camera for NDI®", if NDI allows that form). The About screen shows the required trademark notice.
+The app name is **LCS Cam**. It does not contain "NDI", which avoids the approval NDI requires for product names that use its trademark. Descriptions and screenshots may still say the app sends video over NDI®, as long as they include the notice "NDI® is a registered trademark of Vizrt NDI AB". Do not put the NDI logo in the icon, and follow NDI's brand guidelines. The About screen already shows the notice.
 
 ## 5. Known limitations
 
@@ -76,7 +76,7 @@ The **Android CI** workflow can upload the signed AAB to Google Play. It always 
 **draft** release, so nothing reaches users until you roll it out in Play Console.
 
 1. **Upload the first bundle by hand.** Google Play only accepts API uploads for an app that
-   already has one bundle. Download `NDICameraPro-NDI-release-play.aab` from the `ndi-apk`
+   already has one bundle. Download `LCSCam-NDI-release-play.aab` from the `ndi-apk`
    artifact of a signed CI run and upload it in Play Console › Testing › Internal testing.
 2. **Create a service account.**
    - In Google Cloud Console, create a project (or reuse one) and enable the

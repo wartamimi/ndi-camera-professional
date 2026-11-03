@@ -1,16 +1,12 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- LCS Cam mark: an open lens ring (reads as "C" for Cam) with a live/tally dot in the gap. -->
 <vector xmlns:android="http://schemas.android.com/apk/res/android"
     android:width="108dp" android:height="108dp" android:viewportWidth="108" android:viewportHeight="108">
-    <!-- Camera body -->
-    <path android:fillColor="#FF1C1C1F" android:strokeColor="#FFE9E9EC" android:strokeWidth="2"
-        android:pathData="M30,40 h36 a4,4 0 0 1 4,4 v20 a4,4 0 0 1 -4,4 h-36 a4,4 0 0 1 -4,-4 v-20 a4,4 0 0 1 4,-4 z" />
-    <!-- Lens -->
-    <path android:fillColor="#FF070708" android:strokeColor="#FFE9E9EC" android:strokeWidth="2"
-        android:pathData="M48,54 m-9,0 a9,9 0 1 0 18,0 a9,9 0 1 0 -18,0" />
-    <!-- Signal arcs -->
-    <path android:strokeColor="#FFFF8A1F" android:strokeWidth="3" android:strokeLineCap="round" android:fillColor="#00000000"
-        android:pathData="M74,46 q6,8 0,16" />
-    <path android:strokeColor="#FFFF8A1F" android:strokeWidth="3" android:strokeLineCap="round" android:fillColor="#00000000"
-        android:pathData="M79,41 q10,13 0,26" />
-    <!-- Tally light -->
-    <path android:fillColor="#FFE5322D" android:pathData="M34,45 m-2.5,0 a2.5,2.5 0 1 0 5,0 a2.5,2.5 0 1 0 -5,0" />
+    <group android:pivotX="54" android:pivotY="54" android:scaleX="1.22" android:scaleY="1.22">
+    <path android:fillColor="#00000000" android:strokeColor="#FFFF8A1F" android:strokeWidth="6.5"
+        android:strokeLineCap="round"
+        android:pathData="M72.35,49.08 A19,19 0 1 1 58.92,35.65" />
+    <path android:fillColor="#FFF2F2F4" android:pathData="M54,54 m-8,0 a8,8 0 1 0 16,0 a8,8 0 1 0 -16,0" />
+    <path android:fillColor="#FFE5322D" android:pathData="M67.43,40.57 m-4.2,0 a4.2,4.2 0 1 0 8.4,0 a4.2,4.2 0 1 0 -8.4,0" />
+    </group>
 </vector>

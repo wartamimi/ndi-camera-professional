@@ -1,4 +1,4 @@
-// JNI bridge between Kotlin (com.ndicamera.professional.ndi.NdiNative) and the official NDI SDK.
+// JNI bridge between Kotlin (id.lcscam.app.ndi.NdiNative) and the official NDI SDK.
 #include <jni.h>
 #include <android/log.h>
 #include <Processing.NDI.Lib.h>
@@ -29,25 +29,25 @@ std::string jstr(JNIEnv* env, jstring s) {
 extern "C" {
 
 JNIEXPORT jstring JNICALL
-Java_com_ndicamera_professional_ndi_NdiNative_nativeVersion(JNIEnv* env, jclass) {
+Java_id_lcscam_app_ndi_NdiNative_nativeVersion(JNIEnv* env, jclass) {
     const char* v = NDIlib_version();
     return env->NewStringUTF(v ? v : "unknown");
 }
 
 // 0 = initialised, 1 = CPU not supported, 2 = NDIlib_initialize() failed
 JNIEXPORT jint JNICALL
-Java_com_ndicamera_professional_ndi_NdiNative_nativeInitialize(JNIEnv*, jclass) {
+Java_id_lcscam_app_ndi_NdiNative_nativeInitialize(JNIEnv*, jclass) {
     if (!NDIlib_is_supported_CPU()) return 1;
     return NDIlib_initialize() ? 0 : 2;
 }
 
 JNIEXPORT void JNICALL
-Java_com_ndicamera_professional_ndi_NdiNative_nativeShutdown(JNIEnv*, jclass) {
+Java_id_lcscam_app_ndi_NdiNative_nativeShutdown(JNIEnv*, jclass) {
     NDIlib_destroy();
 }
 
 JNIEXPORT jlong JNICALL
-Java_com_ndicamera_professional_ndi_NdiNative_nativeCreateSender(JNIEnv* env, jclass, jstring name, jstring groups, jboolean clockVideo) {
+Java_id_lcscam_app_ndi_NdiNative_nativeCreateSender(JNIEnv* env, jclass, jstring name, jstring groups, jboolean clockVideo) {
     const std::string n = jstr(env, name);
     const std::string g = jstr(env, groups);
     NdiSender* s = NdiSender::create(n.c_str(), g.c_str(), clockVideo == JNI_TRUE);
@@ -55,12 +55,12 @@ Java_com_ndicamera_professional_ndi_NdiNative_nativeCreateSender(JNIEnv* env, jc
 }
 
 JNIEXPORT void JNICALL
-Java_com_ndicamera_professional_ndi_NdiNative_nativeDestroySender(JNIEnv*, jclass, jlong handle) {
+Java_id_lcscam_app_ndi_NdiNative_nativeDestroySender(JNIEnv*, jclass, jlong handle) {
     delete from_handle(handle);
 }
 
 JNIEXPORT jint JNICALL
-Java_com_ndicamera_professional_ndi_NdiNative_nativeSendVideo(
+Java_id_lcscam_app_ndi_NdiNative_nativeSendVideo(
         JNIEnv* env, jclass, jlong handle,
         jobject yBuf, jint yRowStride, jobject uBuf, jobject vBuf, jint uvRowStride, jint uvPixelStride,
         jint width, jint height, jint rotation, jboolean mirror, jint fpsN, jint fpsD, jlong timecode, jboolean watermark) {
@@ -77,11 +77,11 @@ Java_com_ndicamera_professional_ndi_NdiNative_nativeSendVideo(
     p.width = width;
     p.height = height;
     ndicam::Transform t{rotation, mirror == JNI_TRUE};
-    return s->send_video(p, t, fpsN, fpsD, timecode, watermark == JNI_TRUE ? "NDI CAMERA PRO - FREE" : nullptr);
+    return s->send_video(p, t, fpsN, fpsD, timecode, watermark == JNI_TRUE ? "LCS CAM - FREE" : nullptr);
 }
 
 JNIEXPORT jint JNICALL
-Java_com_ndicamera_professional_ndi_NdiNative_nativeSendAudio(
+Java_id_lcscam_app_ndi_NdiNative_nativeSendAudio(
         JNIEnv* env, jclass, jlong handle, jfloatArray interleaved, jint frames, jint channels, jint sampleRate, jlong timecode) {
     NdiSender* s = from_handle(handle);
     if (!s || !interleaved) return -1;
@@ -94,14 +94,14 @@ Java_com_ndicamera_professional_ndi_NdiNative_nativeSendAudio(
 }
 
 JNIEXPORT jint JNICALL
-Java_com_ndicamera_professional_ndi_NdiNative_nativeGetConnections(JNIEnv*, jclass, jlong handle) {
+Java_id_lcscam_app_ndi_NdiNative_nativeGetConnections(JNIEnv*, jclass, jlong handle) {
     NdiSender* s = from_handle(handle);
     return s ? s->connections(0) : -1;
 }
 
 // bit0 = on program, bit1 = on preview
 JNIEXPORT jint JNICALL
-Java_com_ndicamera_professional_ndi_NdiNative_nativeGetTally(JNIEnv*, jclass, jlong handle) {
+Java_id_lcscam_app_ndi_NdiNative_nativeGetTally(JNIEnv*, jclass, jlong handle) {
     NdiSender* s = from_handle(handle);
     if (!s) return 0;
     bool program = false, preview = false;
@@ -110,7 +110,7 @@ Java_com_ndicamera_professional_ndi_NdiNative_nativeGetTally(JNIEnv*, jclass, jl
 }
 
 JNIEXPORT jstring JNICALL
-Java_com_ndicamera_professional_ndi_NdiNative_nativeGetSourceName(JNIEnv* env, jclass, jlong handle) {
+Java_id_lcscam_app_ndi_NdiNative_nativeGetSourceName(JNIEnv* env, jclass, jlong handle) {
     NdiSender* s = from_handle(handle);
     if (!s) return nullptr;
     const std::string n = s->source_name();
@@ -118,7 +118,7 @@ Java_com_ndicamera_professional_ndi_NdiNative_nativeGetSourceName(JNIEnv* env, j
 }
 
 JNIEXPORT jlongArray JNICALL
-Java_com_ndicamera_professional_ndi_NdiNative_nativeGetCounters(JNIEnv* env, jclass, jlong handle) {
+Java_id_lcscam_app_ndi_NdiNative_nativeGetCounters(JNIEnv* env, jclass, jlong handle) {
     NdiSender* s = from_handle(handle);
     jlong vals[2] = {0, 0};
     if (s) {
@@ -131,7 +131,7 @@ Java_com_ndicamera_professional_ndi_NdiNative_nativeGetCounters(JNIEnv* env, jcl
 }
 
 JNIEXPORT jobjectArray JNICALL
-Java_com_ndicamera_professional_ndi_NdiNative_nativeFindSources(JNIEnv* env, jclass, jint timeoutMs, jstring extraIps) {
+Java_id_lcscam_app_ndi_NdiNative_nativeFindSources(JNIEnv* env, jclass, jint timeoutMs, jstring extraIps) {
     const std::string extra = jstr(env, extraIps);
     const std::vector<std::string> names = ndicam::find_sources(timeoutMs, extra.c_str());
     jclass strCls = env->FindClass("java/lang/String");

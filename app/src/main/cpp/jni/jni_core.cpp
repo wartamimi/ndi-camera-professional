@@ -9,7 +9,7 @@ extern "C" {
 
 // stats (FloatArray, size >= 3): [mean luma, clipped fraction, crushed fraction]
 JNIEXPORT jint JNICALL
-Java_com_ndicamera_professional_camera_NativeFrameAnalyzer_nativeAnalyze(
+Java_id_lcscam_app_camera_NativeFrameAnalyzer_nativeAnalyze(
         JNIEnv* env, jclass, jobject yBuf, jint yRowStride, jint width, jint height,
         jobject bitmap, jboolean zebra, jint zebraThreshold, jboolean peaking, jint peakingThreshold,
         jint peakingColor, jint stripePhase, jintArray histogramOut, jfloatArray statsOut) {
@@ -58,7 +58,7 @@ Java_com_ndicamera_professional_camera_NativeFrameAnalyzer_nativeAnalyze(
 
 // levelsOut (FloatArray, size >= 2*channels): [peak0..peakN-1, rms0..rmsN-1]
 JNIEXPORT void JNICALL
-Java_com_ndicamera_professional_audio_NativeAudio_nativeProcess(
+Java_id_lcscam_app_audio_NativeAudio_nativeProcess(
         JNIEnv* env, jclass, jfloatArray samples, jint frames, jint channels, jfloat gain, jboolean mute, jfloatArray levelsOut) {
     if (!samples || channels <= 0 || channels > 8) return;
     if (env->GetArrayLength(samples) < frames * channels) return;

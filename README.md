@@ -1,6 +1,6 @@
-# NDI Camera Professional (Android)
+# LCS Cam (Android)
 
-Turns an Android phone or tablet into a broadcast camera that sends **real NDI®** video and audio
+**LCS Cam** (formerly "NDI Camera Professional") turns an Android phone or tablet into a broadcast camera that sends **real NDI®** video and audio
 over Wi-Fi or Ethernet, using the **official NDI SDK for Android** through a JNI bridge.
 Receivers: OBS Studio (with an NDI plugin), vMix, TriCaster, NDI Studio Monitor, and any other NDI receiver.
 
@@ -8,7 +8,7 @@ Receivers: OBS Studio (with an NDI plugin), vMix, TriCaster, NDI Studio Monitor,
 
 | | |
 |---|---|
-| Package | `com.ndicamera.professional` |
+| Package | `id.lcscam.app` |
 | Min / target SDK | Android 10 (API 29) / API 36 (Google Play requirement) |
 | Plans | Free, Basic, Pro, Ultra (subscriptions), Max (lifetime) via Google Play Billing |
 | Developer | Munawar Tamimi |

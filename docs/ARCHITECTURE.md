@@ -3,8 +3,8 @@
 ## Modules (packages) and responsibilities
 
 ```
-app/src/main/java/com/ndicamera/professional/
-  NdiCameraApp.kt         Application; creates the DI container
+app/src/main/java/id/lcscam/app/
+  LcsCamApp.kt         Application; creates the DI container
   di/                     AppContainer: manual constructor injection, process scope
   domain/model/           Pure data models: camera, stream, audio, network, system
   domain/ndi/             NdiRuntime / NdiSender interfaces: the NDI abstraction layer
