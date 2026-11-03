@@ -69,3 +69,23 @@ The product name contains "NDI". NDI's brand guidelines require **written approv
 ## 5. Known limitations
 
 Entitlements are checked on the device only, against Google Play's purchase records. There is no server-side receipt validation (Play Developer API / RTDN), so a rooted device can bypass the plan checks. For stronger protection, add a backend that verifies purchase tokens.
+
+## 6. Uploading from GitHub Actions
+
+The **Android CI** workflow can upload the signed AAB to Google Play. It always creates a
+**draft** release, so nothing reaches users until you roll it out in Play Console.
+
+1. **Upload the first bundle by hand.** Google Play only accepts API uploads for an app that
+   already has one bundle. Download `NDICameraPro-NDI-release-play.aab` from the `ndi-apk`
+   artifact of a signed CI run and upload it in Play Console › Testing › Internal testing.
+2. **Create a service account.**
+   - In Google Cloud Console, create a project (or reuse one) and enable the
+     *Google Play Android Developer API*.
+   - Create a service account and download a JSON key for it.
+   - In Play Console › Users and permissions, invite the service account's email address.
+     Give it access to this app with *Release apps to testing tracks* (add *Release to
+     production* only if you want to upload production drafts).
+3. **Add the repository secret** `PLAY_SERVICE_ACCOUNT_JSON` with the full contents of the JSON key.
+4. **Run the workflow.** Actions › Android CI › Run workflow, choose `main` and a `play_track`
+   (`internal` first). The `Upload AAB to Google Play (draft)` job uploads the bundle.
+5. In Play Console, open the draft release, add release notes and roll it out.
