@@ -171,6 +171,7 @@ dependencies {
     implementation(libs.androidx.datastore.preferences)
     implementation(libs.kotlinx.coroutines.android)
     implementation(libs.play.billing)
+    implementation(libs.androidx.fragment)
     implementation(libs.androidx.core.splashscreen)
     debugImplementation(libs.androidx.compose.ui.tooling)
 
