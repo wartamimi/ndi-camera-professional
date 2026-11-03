@@ -57,7 +57,7 @@ Each plan includes everything in the plan below it. The rules are defined in
   - Video and audio are sent only over the local network to the NDI receivers the user chooses.
   - Purchases are handled by Google Play.
   - Answer "No data collected".
-- **Privacy policy URL:** publish `docs/PRIVACY_POLICY.md`, for example with GitHub Pages or any public page.
+- **Privacy policy URL:** https://github.com/wartamimi/ndi-camera-professional/blob/main/docs/PRIVACY_POLICY.md (the repository is public).
 - **Target audience:** 18+ / professionals. Content rating questionnaire: utility, no user-generated content.
 - **Target API:** the app targets API 36 (Android 16), as Google Play has required for new apps and updates since 31 August 2026.
 - **16 KB page size:** native code is built with `ANDROID_SUPPORT_FLEXIBLE_PAGE_SIZES`. CI checks the LOAD alignment of the 64-bit libraries, including NDI's `libndi.so`, and warns when a library is below 16 KB.
@@ -69,3 +69,32 @@ The app name is **LCS Cam**. It does not contain "NDI", which avoids the approva
 ## 5. Known limitations
 
 Entitlements are checked on the device only, against Google Play's purchase records. There is no server-side receipt validation (Play Developer API / RTDN), so a rooted device can bypass the plan checks. For stronger protection, add a backend that verifies purchase tokens.
+
+## 6. Uploading from GitHub Actions
+
+The **Android CI** workflow can upload the signed AAB to Google Play. It always creates a
+**draft** release, so nothing reaches users until you roll it out in Play Console.
+
+1. **Upload the first bundle by hand.** Google Play only accepts API uploads for an app that
+   already has one bundle. Download `LCSCam-NDI-release-play.aab` from the `ndi-apk`
+   artifact of a signed CI run and upload it in Play Console › Testing › Internal testing.
+2. **Create a service account.**
+   - In Google Cloud Console, create a project (or reuse one) and enable the
+     *Google Play Android Developer API*.
+   - Create a service account and download a JSON key for it.
+   - In Play Console › Users and permissions, invite the service account's email address.
+     Give it access to this app with *Release apps to testing tracks* (add *Release to
+     production* only if you want to upload production drafts).
+3. **Add the repository secret** `PLAY_SERVICE_ACCOUNT_JSON` with the full contents of the JSON key.
+4. **Run the workflow.** Actions › Android CI › Run workflow, choose `main` and a `play_track`
+   (`internal` first). The `Upload AAB to Google Play (draft)` job uploads the bundle.
+5. In Play Console, open the draft release, add release notes and roll it out.
+
+### Store listing
+
+The listing text lives in `fastlane/metadata/android/id-ID/` (`title.txt`, `short_description.txt`,
+`full_description.txt`). Put the images in `fastlane/metadata/android/id-ID/images/`
+(see the README there). Start **Android CI** by hand with `update_listing` ticked to upload
+them with `fastlane supply`. This changes only the store listing, not any release.
+The app must already exist in Play Console, and the service account needs the
+*Manage store presence* permission.

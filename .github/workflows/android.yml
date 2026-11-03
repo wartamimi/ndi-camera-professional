@@ -5,6 +5,16 @@ on:
     branches: [ main ]
   pull_request:
   workflow_dispatch:
+    inputs:
+      play_track:
+        description: "Upload the signed AAB to this Google Play track as a DRAFT release (none = do not upload)"
+        type: choice
+        default: none
+        options: [none, internal, alpha, beta, production]
+      update_listing:
+        description: "Upload the store listing text and images from fastlane/metadata/android to Google Play"
+        type: boolean
+        default: false
 
 concurrency:
   group: android-${{ github.ref }}
@@ -231,3 +241,81 @@ jobs:
             out/*.apk
             out/*.aab
           retention-days: 30
+
+  # ---------------------------------------------------------------------------------------
+  # 3) Google Play upload (manual only). Runs when the workflow is started by hand with a
+  #    play_track other than "none". Uploads the signed AAB as a DRAFT release: nothing is
+  #    rolled out to users until you review and roll it out in Play Console.
+  #    Needs secret PLAY_SERVICE_ACCOUNT_JSON (see docs/GOOGLE_PLAY.md, section 6).
+  # ---------------------------------------------------------------------------------------
+  play-upload:
+    name: Upload AAB to Google Play (draft)
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    needs: ndi-build
+    if: github.event_name == 'workflow_dispatch' && inputs.play_track != 'none'
+    env:
+      PLAY_SERVICE_ACCOUNT_JSON: ${{ secrets.PLAY_SERVICE_ACCOUNT_JSON }}
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          name: ndi-apk
+          path: out
+
+      - name: Check upload prerequisites
+        run: |
+          if [ -z "${PLAY_SERVICE_ACCOUNT_JSON}" ]; then
+            echo "::error title=Play upload not configured::Secret PLAY_SERVICE_ACCOUNT_JSON is not set. See docs/GOOGLE_PLAY.md section 6."
+            exit 1
+          fi
+          if [ ! -f out/LCSCam-NDI-release-play.aab ]; then
+            echo "::error title=No signed AAB::The release bundle was not built. Set the SIGNING_* secrets (docs/GOOGLE_PLAY.md section 2)."
+            exit 1
+          fi
+          ls -l out
+
+      - uses: r0adkll/upload-google-play@v1.1.3
+        with:
+          serviceAccountJsonPlainText: ${{ secrets.PLAY_SERVICE_ACCOUNT_JSON }}
+          packageName: id.lcscam.app
+          releaseFiles: out/LCSCam-NDI-release-play.aab
+          track: ${{ inputs.play_track }}
+          status: draft
+          releaseName: "1.0.0 (${{ github.run_number }})"
+
+  # ---------------------------------------------------------------------------------------
+  # 4) Google Play store listing (manual only). Uploads title, descriptions and images from
+  #    fastlane/metadata/android with fastlane supply. Does not upload any bundle and does
+  #    not change any release. Needs secret PLAY_SERVICE_ACCOUNT_JSON.
+  # ---------------------------------------------------------------------------------------
+  play-listing:
+    name: Update Google Play store listing
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    if: github.event_name == 'workflow_dispatch' && inputs.update_listing
+    env:
+      PLAY_SERVICE_ACCOUNT_JSON: ${{ secrets.PLAY_SERVICE_ACCOUNT_JSON }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Check upload prerequisites
+        run: |
+          if [ -z "${PLAY_SERVICE_ACCOUNT_JSON}" ]; then
+            echo "::error title=Play upload not configured::Secret PLAY_SERVICE_ACCOUNT_JSON is not set. See docs/GOOGLE_PLAY.md section 6."
+            exit 1
+          fi
+          find fastlane/metadata/android -type f | sort
+
+      - uses: ruby/setup-ruby@v1
+        with:
+          ruby-version: "3.3"
+
+      - name: Upload listing with fastlane supply
+        run: |
+          gem install fastlane --no-document
+          fastlane supply \
+            --package_name id.lcscam.app \
+            --json_key_data "${PLAY_SERVICE_ACCOUNT_JSON}" \
+            --metadata_path fastlane/metadata/android \
+            --skip_upload_apk true --skip_upload_aab true \
+            --skip_upload_changelogs true

@@ -1,0 +1,27 @@
+LCS Cam mengubah smartphone Android Anda menjadi kamera broadcast untuk produksi live. Video dan audio dikirim secara real-time lewat jaringan lokal (Wi-Fi atau Ethernet) menggunakan protokol NDI®, sehingga HP Anda muncul sebagai sumber NDI di software dan perangkat yang mendukung NDI.
+
+FITUR UTAMA
+• Streaming video + audio NDI® di jaringan lokal, tanpa kabel capture
+• Resolusi hingga 4K60 (tergantung kemampuan kamera HP dan paket)
+• Kontrol manual: ISO, shutter speed, kompensasi eksposur, AE lock
+• Fokus manual & focus lock, white balance manual (Kelvin & tint)
+• Alat bantu: zebra, focus peaking, histogram, safe area
+• Audio mono/stereo, mikrofon USB/eksternal, offset A/V
+• Nama sumber NDI kustom, grup NDI dan tally
+• Streaming tetap berjalan saat layar mati / di latar belakang
+• Pilih lensa: utama, ultra-wide, tele (jika tersedia)
+• Tampilan gelap premium, mode potret
+
+PAKET
+• Free — 720p30, sesi 15 menit, watermark
+• Basic — 1080p30, tanpa batas waktu, tanpa watermark, kontrol eksposur manual
+• Pro — 1080p60, fokus & WB manual, zebra/peaking/histogram, semua lensa
+• Ultra — 4K60, grup NDI & tally, offset A/V
+• Max — semua fitur Ultra, sekali bayar seumur hidup
+
+PRIVASI
+Aplikasi tidak mengumpulkan data pribadi. Video dan audio hanya dikirim di jaringan lokal ke penerima NDI yang Anda pilih. Pembayaran ditangani oleh Google Play.
+
+Dibuat oleh Munawar Tamimi.
+
+NDI® adalah merek dagang terdaftar milik Vizrt NDI AB. Informasi lebih lanjut: https://ndi.video
