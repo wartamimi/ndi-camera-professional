@@ -77,7 +77,7 @@ Java_com_ndicamera_professional_ndi_NdiNative_nativeSendVideo(
     p.width = width;
     p.height = height;
     ndicam::Transform t{rotation, mirror == JNI_TRUE};
-    return s->send_video(p, t, fpsN, fpsD, timecode, watermark == JNI_TRUE ? "NDI CAMERA PRO - FREE" : nullptr);
+    return s->send_video(p, t, fpsN, fpsD, timecode, watermark == JNI_TRUE ? "LCS CAM - FREE" : nullptr);
 }
 
 JNIEXPORT jint JNICALL

@@ -8,8 +8,8 @@ import org.junit.Test
 
 class AppSettingsTest {
     @Test fun defaultSourceName() {
-        assertEquals("NDI Camera - Android 01", AppSettings().sourceName)
-        assertEquals("NDI Camera - Android 01", AppSettings.sanitizeSourceName("   "))
+        assertEquals("LCS Cam 01", AppSettings().sourceName)
+        assertEquals("LCS Cam 01", AppSettings.sanitizeSourceName("   "))
         assertEquals("Stage Left", AppSettings.sanitizeSourceName(" Stage\u0007 Left "))
         assertEquals(63, AppSettings.sanitizeSourceName("x".repeat(200)).length)
     }

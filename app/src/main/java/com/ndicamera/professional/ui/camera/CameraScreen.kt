@@ -275,8 +275,8 @@ private fun TopStatusBar(vm: CameraViewModel, caps: CameraCapabilities?, compact
         Modifier.fillMaxWidth().height(34.dp).background(Cine.Panel).padding(horizontal = 10.dp),
         verticalAlignment = Alignment.CenterVertically,
     ) {
-        Text("NDI", color = Cine.Accent, fontWeight = FontWeight.Black, fontSize = 13.sp, fontFamily = Cine.Mono)
-        Text(" CAM PRO", color = Cine.Text, fontWeight = FontWeight.Bold, fontSize = 13.sp, fontFamily = Cine.Mono)
+        Text("LCS", color = Cine.Accent, fontWeight = FontWeight.Black, fontSize = 13.sp, fontFamily = Cine.Mono)
+        Text(" CAM", color = Cine.Text, fontWeight = FontWeight.Bold, fontSize = 13.sp, fontFamily = Cine.Mono)
         Spacer(Modifier.width(if (compact) 6.dp else 14.dp))
         Text(if (compact) "" else "${Build.MODEL} · ${caps?.lens?.label ?: "--"}", style = Cine.label.copy(fontSize = 10.sp, color = Cine.Text),
             maxLines = 1, modifier = Modifier.weight(1f))

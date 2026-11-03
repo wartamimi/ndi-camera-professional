@@ -34,7 +34,7 @@ import kotlinx.coroutines.launch
 private data class Page(val badge: String, val title: String, val body: String)
 
 private val pages = listOf(
-    Page("NDI", "Selamat datang di NDI Camera Professional",
+    Page("LCS", "Selamat datang di LCS Cam",
         "Ubah ponsel Android menjadi kamera NDI® untuk vMix, OBS, Wirecast, TriCaster dan software produksi lain, langsung lewat jaringan lokal."),
     Page("LAN", "Satu jaringan dengan PC produksi",
         "Sambungkan ponsel dan PC ke Wi-Fi atau Ethernet yang sama. Gunakan Wi-Fi 5 GHz atau adaptor USB-Ethernet untuk hasil paling stabil. Source akan muncul otomatis di receiver."),

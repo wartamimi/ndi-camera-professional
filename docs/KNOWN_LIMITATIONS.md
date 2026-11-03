@@ -10,7 +10,7 @@
 8. **Background streaming is best effort.** A camera/microphone foreground service is used, but OEM power management can still kill or restrict it.
 9. **Bandwidth.** Wi-Fi link rate is shown as a PHY rate, not available bandwidth. The TX readout measures what the app sends (all sockets of the app's UID), not what the receiver gets.
 10. **Discovery self-test** proves local mDNS advertisement only. Wi-Fi client isolation or receiver firewalls can still block remote discovery.
-11. **Product name.** NDI's licensing page requires contacting NDI before using "NDI" in a product name. The launcher label is "NDI Camera Pro" pending that decision.
+11. **Product name.** The app is published as "LCS Cam", which does not contain "NDI". Store texts may describe it as working with NDI® only with the trademark notice ("NDI® is a registered trademark of Vizrt NDI AB"); check NDI's brand guidelines for listing wording.
 12. **No local recording**; the app is a live NDI source only.
 13. **Instrumented (on-device) tests are not included**; unit tests cover pure logic and the native media core.
 

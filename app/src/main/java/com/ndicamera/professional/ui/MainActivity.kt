@@ -159,7 +159,7 @@ private fun PermissionScreen(onRequest: () -> Unit) {
         verticalArrangement = Arrangement.Center, horizontalAlignment = Alignment.CenterHorizontally,
     ) {
         Text("Camera access required", color = Cine.Text, fontSize = 20.sp)
-        Text("NDI Camera Professional needs the camera to send video and the microphone to send audio over NDI. " +
+        Text("LCS Cam needs the camera to send video and the microphone to send audio over NDI. " +
             "If you denied permanently, enable them in Android Settings › Apps.", color = Cine.Dim, fontSize = 14.sp,
             modifier = Modifier.padding(vertical = 16.dp))
         Button(onClick = onRequest, colors = ButtonDefaults.buttonColors(containerColor = Cine.Accent)) {

@@ -45,7 +45,7 @@ data class AppSettings(
     val overlays: OverlaySettings = OverlaySettings(),
 ) {
     companion object {
-        const val DEFAULT_SOURCE_NAME = "NDI Camera - Android 01"
+        const val DEFAULT_SOURCE_NAME = "LCS Cam 01"
 
         /** NDI source names are shown in receivers; keep them printable and reasonably short. */
         fun sanitizeSourceName(raw: String): String {

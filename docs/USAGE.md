@@ -2,7 +2,7 @@
 
 ## Install
 
-Install the NDI-enabled APK (`NDICameraPro-NDI-debug.apk` or the signed release) with
+Install the NDI-enabled APK (`LCSCam-NDI-debug.apk` or the signed release) with
 `adb install -r <apk>` or by opening it on the phone (allow installs from unknown sources).
 The `VALIDATION-no-ndi` APK from CI is for compile checks only: it shows "NDI SDK MISSING" and cannot stream.
 
@@ -16,7 +16,7 @@ The `VALIDATION-no-ndi` APK from CI is for compile checks only: it shows "NDI SD
 
 1. Tap **START STREAM**. The pill changes to *NDI SENDER UP* then *LIVE · n RX* when receivers connect,
    *PREVIEW* (green) / *ON AIR* (red) when the receiver sets tally.
-2. In the receiver choose the source `PHONE-HOSTNAME (NDI Camera - Android 01)`.
+2. In the receiver choose the source `PHONE-HOSTNAME (LCS Cam 01)`.
 3. Tap **STOP STREAM** or use the notification action. The stream keeps running with the screen off or the
    app in the background while the notification is shown (OEM battery managers can still interfere; see limitations).
 
@@ -39,7 +39,7 @@ Greyed controls are not supported by the current lens; they do nothing by design
 ## Settings
 
 - **Camera:** lens, mode, NDI output orientation (landscape/portrait), front-camera output mirroring, keep screen awake, overlay levels.
-- **NDI:** source name (default `NDI Camera - Android 01`), groups, SDK clocking, discovery self-test.
+- **NDI:** source name (default `LCS Cam 01`), groups, SDK clocking, discovery self-test.
 - **Audio:** enable, input device (built-in, USB mic/interface, headset), 48/44.1 kHz, mono/stereo, capture source, digital gain, A/V offset.
 - **Network diagnostics:** interface, IPs, Wi-Fi RSSI/band/link rate, measured TX rate, drops, warnings, troubleshooting.
 - **Performance:** fps, drops, conversion time, thermal, battery, memory, camera capabilities.

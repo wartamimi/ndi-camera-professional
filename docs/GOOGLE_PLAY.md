@@ -36,7 +36,7 @@ Each plan includes everything in the plan below it. The rules are defined in
 1. **Create the app** with package `com.ndicamera.professional`. Debug builds use `.debug` and cannot be published.
 2. **Upload a signed AAB to the Internal testing track.** Billing products can only be created after a bundle containing the billing library has been uploaded.
    - Set up the release keystore with these repository secrets: `SIGNING_KEYSTORE_BASE64`, `SIGNING_STORE_PASSWORD`, `SIGNING_KEY_ALIAS`, `SIGNING_KEY_PASSWORD`.
-   - CI then builds `NDICameraPro-NDI-release-play.aab`.
+   - CI then builds `LCSCam-NDI-release-play.aab`.
    - Its versionCode is the GitHub Actions run number.
    - Use **Play App Signing**.
 3. **Monetize › Products › Subscriptions.** Create `ndicam_basic`, `ndicam_pro` and `ndicam_ultra`.
@@ -64,7 +64,7 @@ Each plan includes everything in the plan below it. The rules are defined in
 
 ## 4. Trademark
 
-The product name contains "NDI". NDI's brand guidelines require **written approval from NDI (Vizrt NDI AB)** before you use "NDI" in an app name on a store. Apply through ndi.video before your production release, or choose a name without "NDI" (for example "… Camera for NDI®", if NDI allows that form). The About screen shows the required trademark notice.
+The app name is **LCS Cam**. It does not contain "NDI", which avoids the approval NDI requires for product names that use its trademark. Descriptions and screenshots may still say the app sends video over NDI®, as long as they include the notice "NDI® is a registered trademark of Vizrt NDI AB". Do not put the NDI logo in the icon, and follow NDI's brand guidelines. The About screen already shows the notice.
 
 ## 5. Known limitations
 

@@ -1,4 +1,4 @@
-# Privacy Policy – NDI Camera Professional
+# Privacy Policy – LCS Cam
 
 Last updated: 2 November 2026 · Developer: Munawar Tamimi
 

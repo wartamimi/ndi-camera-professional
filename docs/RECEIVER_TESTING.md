@@ -16,7 +16,7 @@ only after doing it.
 
 | # | Test | How | Pass criterion |
 |---|---|---|---|
-| E1 | Discovery | Start stream; open Studio Monitor source list | `HOST (NDI Camera - Android 01)` listed within 5 s |
+| E1 | Discovery | Start stream; open Studio Monitor source list | `HOST (LCS Cam 01)` listed within 5 s |
 | E2 | Video | Select source | Live, correct orientation, no colour swap (skin tones natural, not blue/green tinted) |
 | E3 | Resolution | Studio Monitor overlay / vMix input properties | Matches selected mode (e.g. 1920x1080) |
 | E4 | Frame rate | Receiver stats; app FPS readout | Within ±0.5 fps of the mode for 10 min |

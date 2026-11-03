@@ -65,7 +65,7 @@ object PlanCatalog {
 object PlanLimits {
     /** Free sessions stop automatically after this long. */
     const val FREE_SESSION_MS = 15L * 60L * 1000L
-    const val WATERMARK_TEXT = "NDI CAMERA PRO - FREE"
+    const val WATERMARK_TEXT = "LCS CAM - FREE"
 
     fun maxPixels(tier: Tier): Long = when {
         Feature.RES_4K.availableIn(tier) -> Long.MAX_VALUE
