@@ -312,7 +312,7 @@ jobs:
 
       - name: Upload listing with fastlane supply
         run: |
-          gem install fastlane --no-document -v 2.228.0
+          gem install fastlane --no-document
           fastlane supply \
             --package_name com.ndicamera.professional \
             --json_key_data "${PLAY_SERVICE_ACCOUNT_JSON}" \
