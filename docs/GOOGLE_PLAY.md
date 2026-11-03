@@ -57,14 +57,14 @@ Each plan includes everything in the plan below it. The rules are defined in
   - Video and audio are sent only over the local network to the NDI receivers the user chooses.
   - Purchases are handled by Google Play.
   - Answer "No data collected".
-- **Privacy policy URL:** publish `docs/PRIVACY_POLICY.md`, for example with GitHub Pages or any public page.
+- **Privacy policy URL:** https://github.com/wartamimi/ndi-camera-professional/blob/main/docs/PRIVACY_POLICY.md (the repository is public).
 - **Target audience:** 18+ / professionals. Content rating questionnaire: utility, no user-generated content.
 - **Target API:** the app targets API 36 (Android 16), as Google Play has required for new apps and updates since 31 August 2026.
 - **16 KB page size:** native code is built with `ANDROID_SUPPORT_FLEXIBLE_PAGE_SIZES`. CI checks the LOAD alignment of the 64-bit libraries, including NDI's `libndi.so`, and warns when a library is below 16 KB.
 
 ## 4. Trademark
 
-The product name contains "NDI". NDI's brand guidelines require **written approval from NDI (Vizrt NDI AB)** before you use "NDI" in an app name on a store. Apply through ndi.video before your production release, or choose a name without "NDI" (for example "… Camera for NDI®", if NDI allows that form). The About screen shows the required trademark notice.
+The app is published as **LCS Cam**, so the name itself does not contain "NDI". The listing still names NDI® to describe compatibility, with the trademark notice. Earlier the product name contained "NDI". NDI's brand guidelines require **written approval from NDI (Vizrt NDI AB)** before you use "NDI" in an app name on a store. Apply through ndi.video before your production release, or choose a name without "NDI" (for example "… Camera for NDI®", if NDI allows that form). The About screen shows the required trademark notice.
 
 ## 5. Known limitations
 

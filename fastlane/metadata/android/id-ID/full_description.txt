@@ -1,4 +1,4 @@
-NDI Camera Professional mengubah smartphone Android Anda menjadi kamera broadcast untuk produksi live. Video dan audio dikirim secara real-time lewat jaringan lokal (Wi-Fi atau Ethernet) menggunakan protokol NDI®, sehingga HP Anda muncul sebagai sumber NDI di software dan perangkat yang mendukung NDI.
+LCS Cam mengubah smartphone Android Anda menjadi kamera broadcast untuk produksi live. Video dan audio dikirim secara real-time lewat jaringan lokal (Wi-Fi atau Ethernet) menggunakan protokol NDI®, sehingga HP Anda muncul sebagai sumber NDI di software dan perangkat yang mendukung NDI.
 
 FITUR UTAMA
 • Streaming video + audio NDI® di jaringan lokal, tanpa kabel capture
