@@ -1,0 +1,100 @@
+<!doctype html><html><head><meta charset="utf-8"><title>LCS Cam feature graphic</title><link rel="preconnect" href="https://fonts.googleapis.com"><link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;600;700;800&display=swap" rel="stylesheet"><style>
+:root{--bg:#0D0D10;--panel:#16161A;--raised:#1E1E23;--line:#2A2A31;--text:#EDEDF0;--dim:#8E8E98;--faint:#5A5A63;--acc:#FF8A1F;--rec:#E5322D;--ok:#3CCB6B;--warn:#FFC233}
+*{box-sizing:border-box;margin:0;padding:0}
+body{background:#0D0D10;font-family:Inter,sans-serif;color:var(--text)}
+.mono{font-family:"JetBrains Mono",monospace}
+.art{position:relative;overflow:hidden;background:var(--bg)}
+/* icon */
+#icon{width:512px;height:512px;background:#121215}
+/* screenshots */
+.shot{width:1080px;height:1920px}
+.shot .glow{position:absolute;inset:0;background:radial-gradient(900px 700px at 85% 0%,rgba(255,138,31,.16),transparent 70%)}
+.shot .grid{position:absolute;inset:0;background-image:linear-gradient(rgba(255,255,255,.025) 1px,transparent 1px),linear-gradient(90deg,rgba(255,255,255,.025) 1px,transparent 1px);background-size:60px 60px;mask-image:linear-gradient(#000,transparent 55%)}
+.cap{position:absolute;left:96px;right:96px;top:150px}
+.eyebrow{font-family:"JetBrains Mono";font-size:30px;letter-spacing:.12em;color:var(--acc);font-weight:600}
+.h{font-family:Inter;font-weight:700;font-size:96px;line-height:1.04;letter-spacing:-.025em;margin-top:28px}
+.sub{font-size:38px;line-height:1.4;color:var(--dim);margin-top:30px;max-width:860px}
+.phone{position:absolute;left:150px;top:720px;width:780px;height:1500px;border-radius:96px;background:#050506;border:3px solid #2C2C33;box-shadow:0 40px 120px rgba(0,0,0,.6),inset 0 0 0 14px #0A0A0C}
+.screen{position:absolute;inset:20px;border-radius:78px;overflow:hidden;background:#09090B}
+.sb{height:76px;display:flex;align-items:center;justify-content:space-between;padding:0 56px;font-size:24px;color:#cfcfd4;font-weight:600}
+.camera-dot{position:absolute;top:24px;left:50%;width:28px;height:28px;margin-left:-14px;border-radius:50%;background:#000;border:2px solid #1a1a1f}
+.topbar{height:72px;background:var(--panel);display:flex;align-items:center;gap:16px;padding:0 26px;border-bottom:1px solid var(--line)}
+.brand{font-family:"JetBrains Mono";font-weight:800;font-size:26px}
+.brand b{color:var(--acc)}
+.pill{font-family:"JetBrains Mono";font-size:18px;font-weight:700;padding:6px 12px;border-radius:6px;border:2px solid currentColor;letter-spacing:.04em}
+.sp{flex:1}
+.preview{position:relative;height:760px;overflow:hidden;background:#111}
+.scene{position:absolute;inset:0;background:
+ radial-gradient(160px 160px at 18% 30%,rgba(255,170,90,.55),transparent 70%),
+ radial-gradient(110px 110px at 78% 22%,rgba(255,210,150,.45),transparent 70%),
+ radial-gradient(90px 90px at 62% 40%,rgba(120,170,255,.35),transparent 70%),
+ radial-gradient(70px 70px at 35% 18%,rgba(255,240,220,.4),transparent 70%),
+ radial-gradient(420px 260px at 50% 105%,rgba(255,138,31,.35),transparent 70%),
+ linear-gradient(180deg,#26211d 0%,#15120f 55%,#0b0a09 100%)}
+.subject{position:absolute;left:50%;bottom:0;width:300px;height:470px;margin-left:-150px;background:
+ radial-gradient(70px 80px at 50% 70px,#3a302a 98%,transparent 100%),
+ radial-gradient(150px 300px at 50% 330px,#2b2420 98%,transparent 100%);filter:blur(1.5px)}
+.hud{position:absolute;left:22px;right:22px;font-family:"JetBrains Mono";font-size:20px;font-weight:600;display:flex;justify-content:space-between;color:#fff;text-shadow:0 1px 3px #000}
+.focus{position:absolute;left:50%;top:44%;width:150px;height:150px;margin:-75px 0 0 -75px}
+.focus i{position:absolute;width:34px;height:34px;border-color:var(--acc);border-style:solid}
+.panel{padding:24px 26px}
+.cells{display:grid;grid-template-columns:repeat(4,1fr);gap:10px}
+.cell{background:var(--panel);border:1px solid var(--line);border-radius:12px;padding:14px 16px}
+.cell .l{font-family:"JetBrains Mono";font-size:16px;color:var(--dim);letter-spacing:.08em}
+.cell .v{font-family:"JetBrains Mono";font-size:30px;font-weight:700;margin-top:6px}
+.btn{margin-top:18px;height:96px;border-radius:14px;display:flex;align-items:center;justify-content:center;font-family:"JetBrains Mono";font-weight:800;font-size:30px;color:#000;letter-spacing:.06em}
+.row{display:flex;align-items:center;justify-content:space-between}
+.sl{background:var(--panel);border:1px solid var(--line);border-radius:14px;padding:20px 22px;margin-bottom:12px}
+.sl .t{font-family:"JetBrains Mono";font-size:18px;color:var(--dim);letter-spacing:.08em}
+.sl .val{font-family:"JetBrains Mono";font-size:30px;font-weight:700}
+.tag{font-family:"JetBrains Mono";font-size:16px;font-weight:700;padding:5px 10px;border-radius:6px;background:var(--raised);color:var(--dim)}
+.tag.on{background:rgba(255,138,31,.16);color:var(--acc)}
+.track{position:relative;height:8px;border-radius:4px;background:var(--line);margin-top:20px}
+.track .f{position:absolute;left:0;top:0;bottom:0;border-radius:4px;background:var(--acc)}
+.track .k{position:absolute;top:50%;width:30px;height:30px;margin:-15px 0 0 -15px;border-radius:50%;background:#fff;box-shadow:0 0 0 6px rgba(255,138,31,.25)}
+.ticks{display:flex;justify-content:space-between;font-family:"JetBrains Mono";font-size:15px;color:var(--faint);margin-top:12px}
+.list .it{display:flex;align-items:center;justify-content:space-between;height:92px;padding:0 24px;border-bottom:1px solid var(--line);font-size:28px}
+.list .it .r{font-family:"JetBrains Mono";font-size:24px;color:var(--dim)}
+.seg{display:grid;gap:10px;margin-top:14px}
+.seg div{height:78px;border-radius:12px;border:2px solid var(--line);display:flex;align-items:center;justify-content:center;font-family:"JetBrains Mono";font-weight:700;font-size:28px;color:var(--dim)}
+.seg div.on{border-color:var(--acc);color:var(--acc);background:rgba(255,138,31,.1)}
+.sec{font-family:"JetBrains Mono";font-size:18px;color:var(--dim);letter-spacing:.1em;margin:26px 0 0}
+.plan{border:2px solid var(--line);background:var(--panel);border-radius:18px;padding:24px 26px;margin-bottom:14px}
+.plan.hl{border-color:var(--acc);background:linear-gradient(180deg,rgba(255,138,31,.1),rgba(255,138,31,.02))}
+.plan .n{font-family:Inter;font-weight:700;font-size:38px}
+.plan .d{font-size:24px;color:var(--dim);margin-top:8px;line-height:1.45}
+.badge{font-family:"JetBrains Mono";font-size:16px;font-weight:800;padding:6px 12px;border-radius:999px;background:var(--acc);color:#000}
+.foot{position:absolute;left:0;right:0;bottom:70px;text-align:center;font-size:28px;color:var(--faint)}
+/* feature graphic */
+#feature{width:1024px;height:500px}
+#feature .glow{position:absolute;inset:0;background:radial-gradient(520px 420px at 82% 50%,rgba(255,138,31,.22),transparent 70%)}
+</style></head><body>
+<div data-document-role="page" data-label="feature" id="feature" class="art">
+ <div class="glow"></div>
+ <div style="position:absolute;left:72px;top:96px;display:flex;align-items:center;gap:22px">
+  <svg width="84" height="84" viewBox="0 0 108 108" style="border-radius:20px;box-shadow:0 0 0 1px #2A2A31"><rect width="108" height="108" fill="#14161B"/><g transform="translate(54 54) scale(1.5) translate(-54 -54)"><path d="M72.35,49.08 A19,19 0 1 1 58.92,35.65" fill="none" stroke="#FF8A1F" stroke-width="6.5" stroke-linecap="round"/><circle cx="54" cy="54" r="8" fill="#F2F2F4"/><circle cx="67.43" cy="40.57" r="4.2" fill="#E5322D"/></g></svg>
+  <div style="font-family:Inter;font-weight:700;font-size:76px;letter-spacing:-.03em">LCS Cam</div>
+ </div>
+ <div style="position:absolute;left:72px;top:212px;width:520px;font-size:30px;line-height:1.35;color:#C9C9D0">HP Android jadi kamera broadcast NDI<sup style="font-size:.5em">®</sup> untuk produksi live.</div>
+ <div style="position:absolute;left:72px;top:318px;display:flex;gap:10px">
+  <span class="tag on" style="font-size:18px;padding:8px 14px">HINGGA 4K60</span>
+  <span class="tag" style="font-size:18px;padding:8px 14px;color:#C9C9D0">KONTROL MANUAL</span>
+  <span class="tag" style="font-size:18px;padding:8px 14px;color:#C9C9D0">WI-FI / ETHERNET</span>
+ </div>
+ <div style="position:absolute;left:72px;bottom:30px;font-size:13px;color:#5A5A63">NDI® adalah merek dagang terdaftar milik Vizrt NDI AB.</div>
+ 
+ <div style="position:absolute;left:700px;top:40px;width:250px;height:420px;border-radius:40px;background:#050506;border:2px solid #2C2C33;box-shadow:0 30px 80px rgba(0,0,0,.6)">
+  <div style="position:absolute;inset:9px;border-radius:32px;overflow:hidden;background:#09090B">
+   <div style="height:30px"></div>
+   <div style="height:30px;background:var(--panel);display:flex;align-items:center;padding:0 12px;gap:6px;border-bottom:1px solid var(--line)"><span class="brand" style="font-size:12px"><b>LCS</b> CAM</span><span class="sp"></span><span class="pill" style="font-size:9px;padding:2px 5px;color:var(--rec);border-width:1px">ON AIR</span></div>
+   <div class="preview" style="height:220px"><div class="scene"></div><div class="subject" style="width:120px;height:190px;margin-left:-60px;transform:scale(1);background:radial-gradient(28px 32px at 50% 28px,#3a302a 98%,transparent 100%),radial-gradient(60px 120px at 50% 132px,#2b2420 98%,transparent 100%)"></div>
+    <div class="hud" style="top:10px;left:10px;right:10px;font-size:9px"><span>1080p · 60</span><span style="color:var(--rec)">● 00:12:48</span></div></div>
+   <div style="padding:10px"><div class="cells" style="gap:5px">
+    <div class="cell" style="padding:6px 7px;border-radius:6px"><div class="l" style="font-size:7px">ISO</div><div class="v" style="font-size:13px;margin-top:2px">400</div></div>
+    <div class="cell" style="padding:6px 7px;border-radius:6px"><div class="l" style="font-size:7px">SHUT</div><div class="v" style="font-size:13px;margin-top:2px">1/120</div></div>
+    <div class="cell" style="padding:6px 7px;border-radius:6px"><div class="l" style="font-size:7px">WB</div><div class="v" style="font-size:13px;margin-top:2px">5600</div></div>
+    <div class="cell" style="padding:6px 7px;border-radius:6px"><div class="l" style="font-size:7px">FPS</div><div class="v" style="font-size:13px;margin-top:2px">60.0</div></div></div>
+    <div class="btn" style="height:40px;font-size:13px;border-radius:7px;margin-top:8px;background:var(--rec)">STOP STREAM</div></div>
+  </div></div>
+</div>
+</body></html>
