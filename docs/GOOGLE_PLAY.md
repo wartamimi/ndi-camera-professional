@@ -15,7 +15,7 @@ Play Console.
 | Max | `ndicam_max_lifetime` (one-time product) | Rp1.499.000 one time | $99.99 |
 
 Each plan includes everything in the plan below it. The rules are defined in
-`app/src/main/java/com/ndicamera/professional/billing/Plans.kt`.
+`app/src/main/java/id/lcscam/app/billing/Plans.kt`.
 
 | Feature | Free | Basic | Pro | Ultra / Max |
 |---|---|---|---|---|
@@ -33,7 +33,7 @@ Each plan includes everything in the plan below it. The rules are defined in
 
 ## 2. Play Console setup
 
-1. **Create the app** with package `com.ndicamera.professional`. Debug builds use `.debug` and cannot be published.
+1. **Create the app** with package `id.lcscam.app`. Debug builds use `.debug` and cannot be published.
 2. **Upload a signed AAB to the Internal testing track.** Billing products can only be created after a bundle containing the billing library has been uploaded.
    - Set up the release keystore with these repository secrets: `SIGNING_KEYSTORE_BASE64`, `SIGNING_STORE_PASSWORD`, `SIGNING_KEY_ALIAS`, `SIGNING_KEY_PASSWORD`.
    - CI then builds `LCSCam-NDI-release-play.aab`.

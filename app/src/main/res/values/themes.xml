@@ -1,16 +1,16 @@
 <resources>
-    <style name="Theme.NdiCamera" parent="android:Theme.Material.NoActionBar">
+    <style name="Theme.LcsCam" parent="android:Theme.Material.NoActionBar">
         <item name="android:windowBackground">@android:color/black</item>
         <item name="android:statusBarColor">@android:color/black</item>
         <item name="android:navigationBarColor">@android:color/black</item>
         <item name="android:windowLayoutInDisplayCutoutMode">shortEdges</item>
     </style>
 
-    <!-- Launch (splash) theme: AndroidX SplashScreen, then switches to Theme.NdiCamera. -->
-    <style name="Theme.NdiCamera.Starting" parent="Theme.SplashScreen">
+    <!-- Launch (splash) theme: AndroidX SplashScreen, then switches to Theme.LcsCam. -->
+    <style name="Theme.LcsCam.Starting" parent="Theme.SplashScreen">
         <item name="windowSplashScreenBackground">@color/splash_background</item>
         <item name="windowSplashScreenAnimatedIcon">@drawable/ic_launcher_foreground</item>
         <item name="windowSplashScreenIconBackgroundColor">@color/splash_background</item>
-        <item name="postSplashScreenTheme">@style/Theme.NdiCamera</item>
+        <item name="postSplashScreenTheme">@style/Theme.LcsCam</item>
     </style>
 </resources>

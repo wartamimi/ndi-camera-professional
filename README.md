@@ -8,7 +8,7 @@ Receivers: OBS Studio (with an NDI plugin), vMix, TriCaster, NDI Studio Monitor,
 
 | | |
 |---|---|
-| Package | `com.ndicamera.professional` |
+| Package | `id.lcscam.app` |
 | Min / target SDK | Android 10 (API 29) / API 36 (Google Play requirement) |
 | Plans | Free, Basic, Pro, Ultra (subscriptions), Max (lifetime) via Google Play Billing |
 | Developer | Munawar Tamimi |
