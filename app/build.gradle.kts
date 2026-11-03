@@ -171,8 +171,9 @@ dependencies {
     implementation(libs.androidx.datastore.preferences)
     implementation(libs.kotlinx.coroutines.android)
     implementation(libs.play.billing)
-    implementation(libs.androidx.fragment)
     implementation(libs.androidx.core.splashscreen)
+    // Play Billing pulls an old androidx.fragment; ActivityResult APIs need >= 1.3 (lintVitalRelease).
+    implementation(libs.androidx.fragment)
     debugImplementation(libs.androidx.compose.ui.tooling)
 
     testImplementation(libs.junit)
