@@ -1,5 +1,6 @@
 package id.lcscam.app.ui.onboarding
 
+import id.lcscam.app.i18n.tr
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -33,28 +34,34 @@ import kotlinx.coroutines.launch
 
 private data class Page(val badge: String, val title: String, val body: String)
 
-private val pages = listOf(
-    Page("LCS", "Selamat datang di LCS Cam",
-        "Ubah ponsel Android menjadi kamera NDI® untuk vMix, OBS, Wirecast, TriCaster dan software produksi lain, langsung lewat jaringan lokal."),
-    Page("LAN", "Satu jaringan dengan PC produksi",
-        "Sambungkan ponsel dan PC ke Wi-Fi atau Ethernet yang sama. Gunakan Wi-Fi 5 GHz atau adaptor USB-Ethernet untuk hasil paling stabil. Source akan muncul otomatis di receiver."),
-    Page("REC", "Kontrol ala kamera sinema",
-        "Ketuk preview untuk fokus, tekan lama untuk mengunci. Atur lensa, ISO, shutter, white balance, zoom dan overlay dari bar bawah. Tekan START STREAM untuk mulai mengirim."),
-    Page("PRO", "Mulai gratis, upgrade kapan saja",
-        "Versi Free: 720p30, sesi 15 menit dan watermark. Paket Basic, Pro, Ultra dan Max membuka resolusi lebih tinggi, kontrol manual, 4K dan fitur produksi. Lihat di Pengaturan › Paket & Harga."),
-    Page("OK", "Izin yang dibutuhkan",
-        "Aplikasi meminta akses Kamera dan Mikrofon untuk mengirim video dan audio, serta Notifikasi untuk menampilkan status stream saat berjalan di latar belakang."),
+private fun pages() = listOf(
+    Page("LCS", tr("Welcome to LCS Cam", "Selamat datang di LCS Cam"),
+        tr("Turn your Android phone into an NDI® camera for vMix, OBS, Wirecast, TriCaster and other production software, straight over your local network.",
+            "Ubah ponsel Android menjadi kamera NDI® untuk vMix, OBS, Wirecast, TriCaster dan software produksi lain, langsung lewat jaringan lokal.")),
+    Page("LAN", tr("Same network as the production PC", "Satu jaringan dengan PC produksi"),
+        tr("Connect the phone and the PC to the same Wi-Fi or Ethernet. Use 5 GHz Wi-Fi or a USB-Ethernet adapter for the most stable result. The source appears in receivers automatically.",
+            "Sambungkan ponsel dan PC ke Wi-Fi atau Ethernet yang sama. Gunakan Wi-Fi 5 GHz atau adaptor USB-Ethernet untuk hasil paling stabil. Source akan muncul otomatis di receiver.")),
+    Page("REC", tr("Cinema-style camera controls", "Kontrol ala kamera sinema"),
+        tr("Tap the preview to focus, long-press to lock. Set lens, ISO, shutter, white balance, zoom and overlays from the bottom bar. Press START STREAM to begin sending.",
+            "Ketuk preview untuk fokus, tekan lama untuk mengunci. Atur lensa, ISO, shutter, white balance, zoom dan overlay dari bar bawah. Tekan MULAI STREAM untuk mulai mengirim.")),
+    Page("PRO", tr("Start free, upgrade any time", "Mulai gratis, upgrade kapan saja"),
+        tr("Free version: 720p30, 15-minute sessions and a watermark. Basic, Pro, Ultra and Max unlock higher resolutions, manual controls, 4K and production features. See Settings › Plans & Pricing.",
+            "Versi Free: 720p30, sesi 15 menit dan watermark. Paket Basic, Pro, Ultra dan Max membuka resolusi lebih tinggi, kontrol manual, 4K dan fitur produksi. Lihat di Pengaturan › Paket & Harga.")),
+    Page("OK", tr("Permissions needed", "Izin yang dibutuhkan"),
+        tr("The app asks for Camera and Microphone access to send video and audio, and Notifications to show the stream status while running in the background.",
+            "Aplikasi meminta akses Kamera dan Mikrofon untuk mengirim video dan audio, serta Notifikasi untuk menampilkan status stream saat berjalan di latar belakang.")),
 )
 
 /** First-launch introduction. [onDone] marks onboarding finished and continues to permissions. */
 @Composable
 fun OnboardingScreen(onDone: () -> Unit) {
+    val pages = pages()
     val state = rememberPagerState { pages.size }
     val scope = rememberCoroutineScope()
     val last = state.currentPage == pages.lastIndex
     Column(Modifier.fillMaxSize().background(Cine.Black).safeDrawingPadding().padding(24.dp)) {
         Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.End) {
-            if (!last) TextButton(onClick = onDone) { Text("LEWATI", color = Cine.Dim) }
+            if (!last) TextButton(onClick = onDone) { Text(tr("SKIP", "LEWATI"), color = Cine.Dim) }
         }
         HorizontalPager(state, Modifier.weight(1f).fillMaxWidth()) { i ->
             val p = pages[i]
@@ -79,7 +86,7 @@ fun OnboardingScreen(onDone: () -> Unit) {
             colors = ButtonDefaults.buttonColors(containerColor = Cine.Accent),
             modifier = Modifier.fillMaxWidth().height(52.dp),
         ) {
-            Text(if (last) "MULAI" else "LANJUT", color = Cine.Black, fontWeight = FontWeight.Black, fontFamily = Cine.Mono)
+            Text(if (last) tr("START", "MULAI") else tr("NEXT", "LANJUT"), color = Cine.Black, fontWeight = FontWeight.Black, fontFamily = Cine.Mono)
         }
     }
 }

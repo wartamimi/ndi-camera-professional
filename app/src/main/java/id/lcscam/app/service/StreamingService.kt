@@ -1,5 +1,6 @@
 package id.lcscam.app.service
 
+import id.lcscam.app.i18n.tr
 import android.app.Notification
 import android.app.NotificationChannel
 import android.app.NotificationManager
@@ -88,7 +89,7 @@ class StreamingService : Service() {
     private fun buildNotification(source: String): Notification {
         val nm = getSystemService(NotificationManager::class.java)
         if (nm.getNotificationChannel(CHANNEL) == null) {
-            nm.createNotificationChannel(NotificationChannel(CHANNEL, getString(R.string.notif_channel), NotificationManager.IMPORTANCE_LOW))
+            nm.createNotificationChannel(NotificationChannel(CHANNEL, tr("NDI streaming", "Streaming NDI"), NotificationManager.IMPORTANCE_LOW))
         }
         val open = PendingIntent.getActivity(this, 0, Intent(this, MainActivity::class.java)
             .addFlags(Intent.FLAG_ACTIVITY_SINGLE_TOP), PendingIntent.FLAG_IMMUTABLE)
@@ -96,11 +97,11 @@ class StreamingService : Service() {
             PendingIntent.FLAG_IMMUTABLE)
         return NotificationCompat.Builder(this, CHANNEL)
             .setSmallIcon(R.drawable.ic_stat_stream)
-            .setContentTitle(getString(R.string.notif_title))
+            .setContentTitle(tr("NDI stream live", "Stream NDI sedang live"))
             .setContentText(source)
             .setOngoing(true)
             .setContentIntent(open)
-            .addAction(0, getString(R.string.stop_stream), stop)
+            .addAction(0, tr("STOP STREAM", "HENTIKAN STREAM"), stop)
             .setForegroundServiceBehavior(NotificationCompat.FOREGROUND_SERVICE_IMMEDIATE)
             .build()
     }

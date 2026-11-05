@@ -1,5 +1,6 @@
 package id.lcscam.app.audio
 
+import id.lcscam.app.i18n.tr
 import android.Manifest
 import android.annotation.SuppressLint
 import android.content.Context
@@ -24,11 +25,15 @@ import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 
-enum class AudioSourceType(val label: String) {
-    UNPROCESSED("Unprocessed (no AGC/NS)"),
-    CAMCORDER("Camcorder"),
-    MIC("Microphone (default)"),
-    VOICE_RECOGNITION("Voice recognition"),
+enum class AudioSourceType {
+    UNPROCESSED, CAMCORDER, MIC, VOICE_RECOGNITION;
+
+    val label: String get() = when (this) {
+        UNPROCESSED -> tr("Unprocessed (no AGC/NS)", "Tanpa olahan (tanpa AGC/NS)")
+        CAMCORDER -> tr("Camcorder", "Camcorder")
+        MIC -> tr("Microphone (default)", "Mikrofon (bawaan)")
+        VOICE_RECOGNITION -> tr("Voice recognition", "Pengenalan suara")
+    }
 }
 
 data class AudioConfig(
@@ -91,7 +96,7 @@ class AudioEngine(private val context: Context) {
     fun currentConfig(): AudioConfig = config
 
     fun refreshDevices() {
-        val list = mutableListOf(AudioInputDevice(0, "System default", "DEFAULT", emptyList(), emptyList(), false))
+        val list = mutableListOf(AudioInputDevice(0, tr("System default", "Bawaan sistem"), "DEFAULT", emptyList(), emptyList(), false))
         audioManager.getDevices(AudioManager.GET_DEVICES_INPUTS).forEach { d ->
             list += AudioInputDevice(
                 id = d.id,
@@ -161,7 +166,7 @@ class AudioEngine(private val context: Context) {
             }
             if (record == null || record.state != AudioRecord.STATE_INITIALIZED) {
                 record?.release()
-                _state.value = AudioState.Error("Cannot open audio input at ${cfg.sampleRate} Hz / ${cfg.channels} ch")
+                _state.value = AudioState.Error(tr("Cannot open audio input at ${cfg.sampleRate} Hz / ${cfg.channels} ch", "Tidak dapat membuka input audio ${cfg.sampleRate} Hz / ${cfg.channels} ch"))
                 if (++failures > 5) { running = false; break }
                 SystemClock.sleep(500L * failures)
                 continue
@@ -184,7 +189,7 @@ class AudioEngine(private val context: Context) {
                     val n = record.read(buf, 0, buf.size, AudioRecord.READ_BLOCKING)
                     if (n < 0) {
                         Log.e(TAG, "AudioRecord.read error $n")
-                        _state.value = AudioState.Error("Audio input interrupted (error $n); reconnecting")
+                        _state.value = AudioState.Error(tr("Audio input interrupted (error $n); reconnecting", "Input audio terputus (error $n); menyambung ulang"))
                         break
                     }
                     if (n == 0) continue
@@ -206,7 +211,7 @@ class AudioEngine(private val context: Context) {
                 }
             } catch (e: Exception) {
                 Log.e(TAG, "Audio capture failed", e)
-                _state.value = AudioState.Error("Audio capture failed: ${e.message}")
+                _state.value = AudioState.Error(tr("Audio capture failed: ${e.message}", "Perekaman audio gagal: ${e.message}"))
             } finally {
                 try { record.stop() } catch (_: Exception) {}
                 record.release()
@@ -250,15 +255,15 @@ class AudioEngine(private val context: Context) {
     }
 
     private fun typeLabel(type: Int): String = when (type) {
-        AudioDeviceInfo.TYPE_BUILTIN_MIC -> "Built-in mic"
+        AudioDeviceInfo.TYPE_BUILTIN_MIC -> tr("Built-in mic", "Mik internal")
         AudioDeviceInfo.TYPE_USB_DEVICE -> "USB audio"
         AudioDeviceInfo.TYPE_USB_HEADSET -> "USB headset"
         AudioDeviceInfo.TYPE_USB_ACCESSORY -> "USB accessory"
-        AudioDeviceInfo.TYPE_WIRED_HEADSET -> "Wired headset"
+        AudioDeviceInfo.TYPE_WIRED_HEADSET -> tr("Wired headset", "Headset kabel")
         AudioDeviceInfo.TYPE_BLUETOOTH_SCO -> "Bluetooth SCO"
         AudioDeviceInfo.TYPE_LINE_ANALOG -> "Line in"
         AudioDeviceInfo.TYPE_TELEPHONY -> "Telephony"
-        else -> "Input type $type"
+        else -> tr("Input type $type", "Tipe input $type")
     }
 
     private companion object { const val TAG = "AudioEngine" }

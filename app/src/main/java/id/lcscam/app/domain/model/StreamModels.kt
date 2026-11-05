@@ -37,4 +37,16 @@ data class StreamStatistics(
     val totalDropped: Long get() = framesDroppedPipeline + framesDroppedCamera
 }
 
-enum class OutputOrientation(val label: String) { LANDSCAPE("Landscape"), PORTRAIT("Portrait") }
+/**
+ * Orientation of the NDI output. FOLLOW_SCREEN sends exactly what the screen shows (vertical
+ * interface -> portrait output, landscape interface -> landscape output, auto-rotate -> follows
+ * the screen); PORTRAIT/LANDSCAPE force that shape whatever the interface does.
+ */
+enum class OutputOrientation {
+    FOLLOW_SCREEN, PORTRAIT, LANDSCAPE;
+    val label: String get() = when (this) {
+        FOLLOW_SCREEN -> id.lcscam.app.i18n.tr("Follow screen", "Ikuti layar")
+        PORTRAIT -> id.lcscam.app.i18n.tr("Portrait", "Potret")
+        LANDSCAPE -> id.lcscam.app.i18n.tr("Landscape", "Lanskap")
+    }
+}

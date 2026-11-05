@@ -1,5 +1,6 @@
 package id.lcscam.app.ui.components
 
+import id.lcscam.app.i18n.tr
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Column
@@ -33,7 +34,7 @@ import id.lcscam.app.ui.theme.Cine
 fun SettingsPage(title: String, onBack: () -> Unit, content: @Composable ColumnScope.() -> Unit) {
     Column(Modifier.fillMaxSize().background(Cine.Black)) {
         Row(Modifier.fillMaxWidth().height(52.dp).background(Cine.Panel), verticalAlignment = Alignment.CenterVertically) {
-            IconButton(onClick = onBack) { Icon(Icons.AutoMirrored.Filled.ArrowBack, "Back", tint = Cine.Text) }
+            IconButton(onClick = onBack) { Icon(Icons.AutoMirrored.Filled.ArrowBack, tr("Back", "Kembali"), tint = Cine.Text) }
             Text(title.uppercase(), color = Cine.Text, fontWeight = FontWeight.Bold, fontFamily = Cine.Mono, fontSize = 15.sp)
         }
         Column(

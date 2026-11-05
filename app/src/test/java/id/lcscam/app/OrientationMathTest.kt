@@ -19,10 +19,24 @@ class OrientationMathTest {
     }
 
     @Test fun landscapeModeIgnoresPortraitDevice() {
-        assertEquals(270, OrientationMath.constrainDeviceOrientation(0, 270, 0, OutputOrientation.LANDSCAPE))
-        assertEquals(90, OrientationMath.constrainDeviceOrientation(90, 270, 0, OutputOrientation.LANDSCAPE))
-        assertEquals(180, OrientationMath.constrainDeviceOrientation(180, 270, 0, OutputOrientation.PORTRAIT))
-        assertEquals(0, OrientationMath.constrainDeviceOrientation(270, 270, 0, OutputOrientation.PORTRAIT))
+        assertEquals(270, OrientationMath.outputDeviceOrientation(OutputOrientation.LANDSCAPE, 0, 270, 0, 0))
+        assertEquals(90, OrientationMath.outputDeviceOrientation(OutputOrientation.LANDSCAPE, 90, 270, 0, 0))
+        assertEquals(180, OrientationMath.outputDeviceOrientation(OutputOrientation.PORTRAIT, 180, 270, 0, 0))
+        assertEquals(0, OrientationMath.outputDeviceOrientation(OutputOrientation.PORTRAIT, 270, 270, 0, 0))
+    }
+
+    @Test fun followScreenUsesDisplayRotationNotSensor() {
+        // Interface locked vertical, phone physically turned to landscape: output stays portrait.
+        val portraitScreen = OrientationMath.screenToDeviceOrientation(0)
+        assertEquals(0, OrientationMath.outputDeviceOrientation(OutputOrientation.FOLLOW_SCREEN, 270, 270, 0, portraitScreen))
+        assertEquals(90, OrientationMath.outputRotation(90, portraitScreen, frontFacing = false)) // 1080x1920 portrait frame
+        // Interface in landscape with the display rotated 90 (top of phone to the left) = device 270.
+        val land = OrientationMath.screenToDeviceOrientation(90)
+        assertEquals(270, land)
+        assertEquals(0, OrientationMath.outputRotation(90, OrientationMath.outputDeviceOrientation(
+            OutputOrientation.FOLLOW_SCREEN, 0, 270, 0, land), frontFacing = false)) // upright 1920x1080
+        assertEquals(90, OrientationMath.screenToDeviceOrientation(270))
+        assertEquals(180, OrientationMath.screenToDeviceOrientation(180))
     }
 
     @Test fun snapHasHysteresis() {

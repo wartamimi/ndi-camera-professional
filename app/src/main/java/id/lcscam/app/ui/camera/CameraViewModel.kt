@@ -71,7 +71,15 @@ class CameraViewModel(val c: AppContainer) : ViewModel() {
     fun setKelvin(k: Int) = if (!has(Feature.MANUAL_WB)) Unit else update { it.copy(whiteBalanceMode = WhiteBalanceMode.KELVIN, kelvin = k) }
     fun setTint(t: Float) = if (!has(Feature.MANUAL_WB)) Unit else update { it.copy(tint = t) }
     fun setAwbLock(on: Boolean) = if (!has(Feature.MANUAL_WB)) Unit else update { it.copy(awbLock = on) }
-    fun setZoom(z: Float) = update { it.copy(zoom = z) }
+    val zoomRamping = c.cameraEngine.zoomRamping
+    /** Immediate zoom (slider drag); cancels a running timed move. */
+    fun setZoom(z: Float) = c.cameraEngine.rampZoom(z, 0L)
+    /** Zoom to [z] over the duration chosen in the zoom panel (1-8 s, or instant). */
+    fun zoomTo(z: Float) = c.cameraEngine.rampZoom(z, settings.value.zoomDurationSec * 1000L)
+    fun zoomIn() { capabilities.value?.let { zoomTo(it.zoomRange.upper) } }
+    fun zoomOut() { capabilities.value?.let { zoomTo(it.zoomRange.lower) } }
+    fun stopZoom() = c.cameraEngine.stopZoomRamp()
+    fun setZoomDuration(sec: Int) = c.settings.update { it.copy(zoomDurationSec = sec.coerceIn(0, 8)) }
     fun setTorch(on: Boolean) = update { it.copy(torch = on) }
     fun setOis(on: Boolean) = update { it.copy(ois = on) }
     fun setEis(on: Boolean) = update { it.copy(eis = on) }

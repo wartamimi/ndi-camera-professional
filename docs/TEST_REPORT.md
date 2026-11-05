@@ -28,6 +28,11 @@ source is advertised, and frames arrive at a receiver is only known after the de
 | Supported resolution/fps detection | ✓ | ✓ | ✓ (mode filter logic) | – | – |
 | Preview, session management, camera switching | ✓ | ✓ | – | – | – |
 | Orientation correction (output rotation, tap mapping) | ✓ | ✓ | ✓ | – | – |
+| NDI output follows the interface orientation ("Follow screen") | ✓ | see CI | ✓ (orientation math) | – | – |
+| Camera opens once after first-run permission grant (no restart) | ✓ | see CI | – | – | – |
+| Timed zoom moves 1–8 s (eased, log-scale) | ✓ | see CI | ✓ (ramp math) | – | – |
+| Indonesian / English interface, language picker, region default | ✓ | see CI | ✓ (region rule) | – | – |
+| Animated splash logo | ✓ | see CI | – | – | – |
 | Camera interruption recovery | ✓ | ✓ | – | – | – |
 | Manual ISO / shutter / EV / AE lock | ✓ | ✓ | ✓ (stops, labels) | – | – |
 | Focus: AF-C, tap focus, AF lock, MF | ✓ | ✓ | – | – | – |
