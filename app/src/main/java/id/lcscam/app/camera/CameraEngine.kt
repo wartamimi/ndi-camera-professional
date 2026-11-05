@@ -1,5 +1,6 @@
 package id.lcscam.app.camera
 
+import id.lcscam.app.i18n.tr
 import android.Manifest
 import android.annotation.SuppressLint
 import android.content.Context
@@ -103,10 +104,24 @@ class CameraEngine(private val context: Context, private val repository: CameraR
     private var timestampBoottime = false
     private var lastTelemetryMs = 0L
     private var availabilityRegistered = false
+    /**
+     * Incremented on every open/close. Device and session callbacks carry the generation they
+     * were created for and ignore themselves when stale, so a late callback from an earlier
+     * open can never tear down the camera that is opening or running now.
+     */
+    private var generation = 0
+    private var zoomRamp: Runnable? = null
+    private var lastRequested: VideoMode? = null
 
     fun refreshLenses() = cameraHandler.post { _lenses.value = repository.enumerateLenses() }
 
     fun open(lens: LensDescriptor, requested: VideoMode?) = cameraHandler.post {
+        // Idempotent: a second request for the camera that is already opening/running is a no-op.
+        // (On first launch the permission result and the camera screen both ask for the camera.)
+        val st = _state.value
+        if (wantOpen && this.lens?.key == lens.key && (requested == null || requested == lastRequested || requested == mode) &&
+            (st is CameraState.Opening || st is CameraState.Running)) return@post
+        lastRequested = requested
         wantOpen = true
         reopenAttempts = 0
         fallbackTried = false
@@ -145,6 +160,49 @@ class CameraEngine(private val context: Context, private val repository: CameraR
         applyRepeating()
     }
 
+    private val _zoomRamping = MutableStateFlow(false)
+    /** True while a timed zoom move is running. */
+    val zoomRamping: StateFlow<Boolean> = _zoomRamping.asStateFlow()
+
+    /**
+     * Moves zoom to [target] over [durationMs] with eased, log-space interpolation; 0 is instant.
+     * A new move, a manual zoom change or closing the camera cancels the running move.
+     */
+    fun rampZoom(target: Float, durationMs: Long) = cameraHandler.post {
+        cancelZoomRamp()
+        val c = caps
+        val to = c?.let { target.coerceIn(it.zoomRange.lower, it.zoomRange.upper) } ?: target
+        val from = _controls.value.zoom
+        if (durationMs <= 0L || c == null || from == to) {
+            _controls.value = _controls.value.copy(zoom = to)
+            applyRepeating()
+            return@post
+        }
+        val start = SystemClock.uptimeMillis()
+        val stepMs = (1000L / (mode?.fps ?: 30)).coerceIn(8L, 40L)
+        val r = object : Runnable {
+            override fun run() {
+                if (zoomRamp !== this) return
+                val t = ((SystemClock.uptimeMillis() - start).toFloat() / durationMs).coerceIn(0f, 1f)
+                _controls.value = _controls.value.copy(zoom = ZoomRamp.valueAt(from, to, t))
+                applyRepeating()
+                if (t < 1f) cameraHandler.postDelayed(this, stepMs) else { zoomRamp = null; _zoomRamping.value = false }
+            }
+        }
+        zoomRamp = r
+        _zoomRamping.value = true
+        r.run()
+    }
+
+    /** Stops a running zoom move at the current zoom. */
+    fun stopZoomRamp() = cameraHandler.post { cancelZoomRamp() }
+
+    private fun cancelZoomRamp() {
+        zoomRamp?.let { cameraHandler.removeCallbacks(it) }
+        zoomRamp = null
+        _zoomRamping.value = false
+    }
+
     /**
      * Focus/expose at a normalised sensor point. When [lock] is true an AF trigger is sent and the
      * lens stays at the result (focus lock); otherwise continuous AF is biased toward the point.
@@ -177,19 +235,20 @@ class CameraEngine(private val context: Context, private val repository: CameraR
     @SuppressLint("MissingPermission")
     private fun openInternal(target: LensDescriptor, requested: VideoMode?) {
         closeInternal()
+        val gen = generation
         if (context.checkSelfPermission(Manifest.permission.CAMERA) != PackageManager.PERMISSION_GRANTED) {
             _state.value = CameraState.PermissionRequired
             return
         }
         val c = try { repository.capabilities(target) } catch (e: Exception) {
-            _state.value = CameraState.Error("Cannot read camera ${target.label}: ${e.message}", true)
+            _state.value = CameraState.Error(tr("Cannot read camera ${target.label}: ${e.message}", "Tidak dapat membaca kamera ${target.label}: ${e.message}"), true)
             return
         }
         // Plan limits: only modes allowed by the active plan may be opened.
         val allowed = c.modes.filter(modeFilter).ifEmpty { c.modes.filter { it.resolution.pixels <= 1280L * 720L && it.fps <= 30 } }
         val selected = requested?.takeIf { it in allowed } ?: ModeSelection.defaultMode(allowed)
         if (selected == null) {
-            _state.value = CameraState.Error("No supported YUV video mode on ${target.label}", false)
+            _state.value = CameraState.Error(tr("No supported YUV video mode on ${target.label}", "Tidak ada mode video YUV yang didukung di ${target.label}"), false)
             return
         }
         lens = target
@@ -207,15 +266,17 @@ class CameraEngine(private val context: Context, private val repository: CameraR
             availabilityRegistered = true
         }
         try {
-            cameraManager.openCamera(target.cameraId, cameraExecutor, deviceCallback)
+            cameraManager.openCamera(target.cameraId, cameraExecutor, DeviceCallback(gen))
         } catch (e: Exception) {
             Log.e(TAG, "openCamera failed", e)
-            _state.value = CameraState.Error("openCamera failed: ${e.message}", true)
+            _state.value = CameraState.Error(tr("Could not open the camera: ${e.message}", "Gagal membuka kamera: ${e.message}"), true)
             scheduleReopen()
         }
     }
 
     private fun closeInternal() {
+        generation++
+        cancelZoomRamp()
         try { session?.close() } catch (_: Exception) {}
         session = null
         try { device?.close() } catch (_: Exception) {}
@@ -236,34 +297,44 @@ class CameraEngine(private val context: Context, private val repository: CameraR
         reader = null
     }
 
-    private val deviceCallback = object : CameraDevice.StateCallback() {
+    private inner class DeviceCallback(private val gen: Int) : CameraDevice.StateCallback() {
+        private fun stale() = gen != generation
+
         override fun onOpened(camera: CameraDevice) {
+            if (stale()) {
+                // A newer open/close superseded this one: release the device instead of adopting it.
+                Log.i(TAG, "Closing stale camera device ${camera.id}")
+                try { camera.close() } catch (_: Exception) {}
+                return
+            }
             device = camera
             reopenAttempts = 0
             createSession()
         }
 
         override fun onDisconnected(camera: CameraDevice) {
+            try { camera.close() } catch (_: Exception) {}
+            if (stale() || (device != null && device !== camera)) return
             Log.w(TAG, "Camera disconnected (taken by another client or hardware event)")
-            camera.close()
-            if (device === camera) device = null
+            device = null
             session = null
             closeReader()
-            _state.value = CameraState.Disconnected("Camera in use by another app or disconnected. Will reconnect when available.")
+            _state.value = CameraState.Disconnected(tr("Camera in use by another app or disconnected. Will reconnect when available.", "Kamera dipakai aplikasi lain atau terputus. Akan tersambung lagi saat tersedia."))
         }
 
         override fun onError(camera: CameraDevice, error: Int) {
+            try { camera.close() } catch (_: Exception) {}
+            if (stale() || (device != null && device !== camera)) return
             val msg = when (error) {
-                ERROR_CAMERA_IN_USE -> "Camera in use by another app"
-                ERROR_MAX_CAMERAS_IN_USE -> "Too many cameras open"
-                ERROR_CAMERA_DISABLED -> "Camera disabled by device policy"
-                ERROR_CAMERA_DEVICE -> "Camera device error"
-                ERROR_CAMERA_SERVICE -> "Camera service error"
-                else -> "Camera error $error"
+                ERROR_CAMERA_IN_USE -> tr("Camera in use by another app", "Kamera sedang dipakai aplikasi lain")
+                ERROR_MAX_CAMERAS_IN_USE -> tr("Too many cameras open", "Terlalu banyak kamera terbuka")
+                ERROR_CAMERA_DISABLED -> tr("Camera disabled by device policy", "Kamera dinonaktifkan oleh kebijakan perangkat")
+                ERROR_CAMERA_DEVICE -> tr("Camera device error", "Kesalahan perangkat kamera")
+                ERROR_CAMERA_SERVICE -> tr("Camera service error", "Kesalahan layanan kamera")
+                else -> tr("Camera error $error", "Kesalahan kamera $error")
             }
             Log.e(TAG, msg)
-            camera.close()
-            if (device === camera) device = null
+            device = null
             session = null
             closeReader()
             _state.value = CameraState.Error(msg, error != ERROR_CAMERA_DISABLED)
@@ -286,7 +357,8 @@ class CameraEngine(private val context: Context, private val repository: CameraR
         if (!wantOpen || reopenAttempts >= 5) return
         reopenAttempts++
         val delay = 500L * (1 shl (reopenAttempts - 1))
-        cameraHandler.postDelayed({ if (wantOpen && device == null) openInternal(l, mode) }, delay)
+        val gen = generation
+        cameraHandler.postDelayed({ if (wantOpen && device == null && gen == generation) openInternal(l, mode) }, delay)
     }
 
     private fun createSession() {
@@ -311,18 +383,20 @@ class CameraEngine(private val context: Context, private val repository: CameraR
             dev.createCaptureSession(config)
         } catch (e: Exception) {
             Log.e(TAG, "createCaptureSession failed", e)
-            _state.value = CameraState.Error("Session failed: ${e.message}", true)
+            _state.value = CameraState.Error(tr("Camera session failed: ${e.message}", "Sesi kamera gagal: ${e.message}"), true)
         }
     }
 
     private val sessionCallback = object : CameraCaptureSession.StateCallback() {
         override fun onConfigured(s: CameraCaptureSession) {
+            if (s.device !== device) { try { s.close() } catch (_: Exception) {}; return }
             session = s
             applyRepeating()
             _state.value = CameraState.Running(mode!!, previewSurface != null)
         }
 
         override fun onConfigureFailed(s: CameraCaptureSession) {
+            if (s.device !== device) return
             val m = mode
             Log.e(TAG, "Session configuration failed for $m")
             val c = caps
@@ -330,10 +404,10 @@ class CameraEngine(private val context: Context, private val repository: CameraR
             if (!fallbackTried && fallback != null && fallback != m) {
                 fallbackTried = true
                 mode = fallback
-                _state.value = CameraState.Error("${m?.label} rejected by the camera session; falling back to ${fallback.label}", true)
+                _state.value = CameraState.Error(tr("${m?.label} rejected by the camera session; falling back to ${fallback.label}", "${m?.label} ditolak sesi kamera; beralih ke ${fallback.label}"), true)
                 createSession()
             } else {
-                _state.value = CameraState.Error("Camera session configuration failed for ${m?.label}", false)
+                _state.value = CameraState.Error(tr("Camera session configuration failed for ${m?.label}", "Konfigurasi sesi kamera gagal untuk ${m?.label}"), false)
             }
         }
 

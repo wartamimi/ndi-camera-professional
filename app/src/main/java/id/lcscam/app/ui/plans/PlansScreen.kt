@@ -1,5 +1,6 @@
 package id.lcscam.app.ui.plans
 
+import id.lcscam.app.i18n.tr
 import android.app.Activity
 import android.content.Context
 import android.content.ContextWrapper
@@ -47,26 +48,28 @@ private fun Context.findActivity(): Activity? {
 }
 
 /** What the Free plan is limited to, in plain language (mirrors [PlanLimits]). */
-private val freeLimits = listOf(
-    "Maksimal 720p 30 fps",
-    "Sesi stream ${PlanLimits.FREE_SESSION_MS / 60_000} menit, lalu berhenti otomatis",
-    "Watermark \"${PlanLimits.WATERMARK_TEXT}\" pada output NDI",
-    "Audio mono, mikrofon internal",
-    "Nama source NDI default",
-    "Kamera utama depan/belakang saja",
-    "Exposure, fokus dan white balance otomatis",
-    "Stream berhenti saat app ditutup / layar mati",
+private fun freeLimits() = listOf(
+    tr("Up to 720p 30 fps", "Maksimal 720p 30 fps"),
+    tr("${PlanLimits.FREE_SESSION_MS / 60_000}-minute stream sessions, then it stops automatically",
+        "Sesi stream ${PlanLimits.FREE_SESSION_MS / 60_000} menit, lalu berhenti otomatis"),
+    tr("\"${PlanLimits.WATERMARK_TEXT}\" watermark on the NDI output", "Watermark \"${PlanLimits.WATERMARK_TEXT}\" pada output NDI"),
+    tr("Mono audio, built-in microphone", "Audio mono, mikrofon internal"),
+    tr("Default NDI source name", "Nama source NDI default"),
+    tr("Main front/rear camera only", "Kamera utama depan/belakang saja"),
+    tr("Automatic exposure, focus and white balance", "Exposure, fokus dan white balance otomatis"),
+    tr("Stream stops when the app is closed / screen is off", "Stream berhenti saat app ditutup / layar mati"),
 )
 
-private val tierTagline = mapOf(
-    Tier.BASIC to "Untuk streaming harian tanpa batas waktu",
-    Tier.PRO to "Kontrol kamera manual penuh dan alat bantu sinematik",
-    Tier.ULTRA to "4K, tally dan fitur NDI lanjutan untuk produksi",
-    Tier.MAX to "Semua fitur Ultra, sekali bayar selamanya",
-)
+private fun tierTagline(t: Tier) = when (t) {
+    Tier.BASIC -> tr("For everyday streaming without a time limit", "Untuk streaming harian tanpa batas waktu")
+    Tier.PRO -> tr("Full manual camera control and cinematic tools", "Kontrol kamera manual penuh dan alat bantu sinematik")
+    Tier.ULTRA -> tr("4K, tally and advanced NDI features for production", "4K, tally dan fitur NDI lanjutan untuk produksi")
+    Tier.MAX -> tr("Every Ultra feature, pay once, keep forever", "Semua fitur Ultra, sekali bayar selamanya")
+    Tier.FREE -> tr("Try all the NDI basics", "Coba semua dasar NDI")
+}
 
 @Composable
-fun PlansScreen(c: AppContainer, onBack: () -> Unit) = SettingsPage("Paket & Harga", onBack) {
+fun PlansScreen(c: AppContainer, onBack: () -> Unit) = SettingsPage(tr("Plans & Pricing", "Paket & Harga"), onBack) {
     val billing = c.billing
     val tier by billing.tier.collectAsStateWithLifecycle()
     val status by billing.status.collectAsStateWithLifecycle()
@@ -75,35 +78,37 @@ fun PlansScreen(c: AppContainer, onBack: () -> Unit) = SettingsPage("Paket & Har
     val ctx = LocalContext.current
     LaunchedEffect(Unit) { billing.refresh() }
 
-    Text("Paket aktif: ${tier.label}", color = Cine.Accent, fontSize = 18.sp, fontWeight = FontWeight.Bold)
+    Text(tr("Active plan: ${tier.label}", "Paket aktif: ${tier.label}"), color = Cine.Accent, fontSize = 18.sp, fontWeight = FontWeight.Bold)
     when (val s = status) {
-        BillingStatus.Connecting -> Text("Menghubungkan ke Google Play…", color = Cine.Dim, fontSize = 12.sp)
-        is BillingStatus.Unavailable -> Text("Google Play Billing tidak tersedia: ${s.reason}", color = Cine.Warn, fontSize = 12.sp)
+        BillingStatus.Connecting -> Text(tr("Connecting to Google Play…", "Menghubungkan ke Google Play…"), color = Cine.Dim, fontSize = 12.sp)
+        is BillingStatus.Unavailable -> Text(tr("Google Play Billing unavailable: ${s.reason}", "Google Play Billing tidak tersedia: ${s.reason}"), color = Cine.Warn, fontSize = 12.sp)
         BillingStatus.Ready -> Unit
     }
     message?.let { m ->
         Text(m, color = Cine.Warn, fontSize = 12.sp, modifier = Modifier.padding(top = 6.dp).clickable { billing.clearMessage() })
     }
 
-    PlanCard(title = "FREE", tagline = "Coba semua dasar NDI", current = tier == Tier.FREE) {
-        freeLimits.forEach { Text("• $it", color = Cine.Dim, fontSize = 12.sp) }
+    PlanCard(title = "FREE", tagline = tierTagline(Tier.FREE), current = tier == Tier.FREE) {
+        freeLimits().forEach { Text("• $it", color = Cine.Dim, fontSize = 12.sp) }
     }
 
     Tier.entries.filter { it != Tier.FREE }.forEach { t ->
         val product = PlanCatalog.productFor(t)!!
         val tierOffers = offers.filter { it.tier == t }
-        PlanCard(title = t.label.uppercase(), tagline = tierTagline[t].orEmpty(), current = tier == t) {
+        PlanCard(title = t.label.uppercase(), tagline = tierTagline(t), current = tier == t) {
             val newHere = Feature.entries.filter { it.minTier == t }
             if (t == Tier.MAX) {
-                Text("• Semua fitur Ultra", color = Cine.Text, fontSize = 12.sp)
-                Text("• Tanpa langganan: bayar sekali, berlaku selamanya", color = Cine.Text, fontSize = 12.sp)
+                Text(tr("• Every Ultra feature", "• Semua fitur Ultra"), color = Cine.Text, fontSize = 12.sp)
+                Text(tr("• No subscription: pay once, valid forever", "• Tanpa langganan: bayar sekali, berlaku selamanya"), color = Cine.Text, fontSize = 12.sp)
             } else {
-                if (t != Tier.BASIC) Text("• Semua fitur ${Tier.entries[t.ordinal - 1].label}", color = Cine.Text, fontSize = 12.sp)
+                if (t != Tier.BASIC) Text(tr("• Every ${Tier.entries[t.ordinal - 1].label} feature", "• Semua fitur ${Tier.entries[t.ordinal - 1].label}"), color = Cine.Text, fontSize = 12.sp)
                 newHere.forEach { Text("• ${it.title}", color = Cine.Text, fontSize = 12.sp) }
             }
             if (tierOffers.isEmpty()) {
-                Text("Harga belum tersedia dari Google Play (produk \"${product.productId}\" belum aktif di Play Console " +
-                    "atau app tidak diinstal dari Google Play). Harga yang disarankan: ${product.suggestedPrice}",
+                Text(tr("Price not yet available from Google Play (product \"${product.productId}\" is not active in Play Console " +
+                    "or the app was not installed from Google Play). Suggested price: ${product.suggestedPrice}",
+                    "Harga belum tersedia dari Google Play (produk \"${product.productId}\" belum aktif di Play Console " +
+                    "atau app tidak diinstal dari Google Play). Harga yang disarankan: ${product.suggestedPrice}"),
                     color = Cine.Dim, fontSize = 11.sp, modifier = Modifier.padding(top = 6.dp))
             } else if (!tier.atLeast(t)) {
                 tierOffers.forEach { o ->
@@ -113,7 +118,7 @@ fun PlansScreen(c: AppContainer, onBack: () -> Unit) = SettingsPage("Paket & Har
                         modifier = Modifier.fillMaxWidth().padding(top = 6.dp),
                     ) {
                         val period = when (o.periodLabel) {
-                            "monthly" -> "/ bulan"; "yearly" -> "/ tahun"; "lifetime" -> "sekali bayar"; else -> "/ ${o.periodLabel}"
+                            "monthly" -> tr("/ month", "/ bulan"); "yearly" -> tr("/ year", "/ tahun"); "lifetime" -> tr("one-time", "sekali bayar"); else -> "/ ${o.periodLabel}"
                         }
                         Text("${o.formattedPrice} $period", color = Cine.Black, fontWeight = FontWeight.Bold)
                     }
@@ -122,19 +127,20 @@ fun PlansScreen(c: AppContainer, onBack: () -> Unit) = SettingsPage("Paket & Har
         }
     }
 
-    SectionTitle("Kelola")
+    SectionTitle(tr("Manage", "Kelola"))
     Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-        OutlinedButton(onClick = { billing.refresh() }) { Text("PULIHKAN PEMBELIAN", color = Cine.Text) }
+        OutlinedButton(onClick = { billing.refresh() }) { Text(tr("RESTORE PURCHASES", "PULIHKAN PEMBELIAN"), color = Cine.Text) }
         OutlinedButton(onClick = {
             val uri = Uri.parse("https://play.google.com/store/account/subscriptions?package=${ctx.packageName}")
             ctx.startActivity(Intent(Intent.ACTION_VIEW, uri))
-        }) { Text("LANGGANAN DI PLAY", color = Cine.Text) }
+        }) { Text(tr("SUBSCRIPTIONS ON PLAY", "LANGGANAN DI PLAY"), color = Cine.Text) }
     }
-    Text("Langganan diperpanjang otomatis dan bisa dibatalkan kapan saja di Google Play. Pembayaran ditangani oleh Google Play.",
+    Text(tr("Subscriptions renew automatically and can be cancelled any time in Google Play. Payment is handled by Google Play.",
+        "Langganan diperpanjang otomatis dan bisa dibatalkan kapan saja di Google Play. Pembayaran ditangani oleh Google Play."),
         color = Cine.Dim, fontSize = 11.sp, modifier = Modifier.padding(vertical = 8.dp))
 
     if (BuildConfig.DEBUG) {
-        SectionTitle("Debug: paksa paket (hanya build debug)")
+        SectionTitle(tr("Debug: force plan (debug builds only)", "Debug: paksa paket (hanya build debug)"))
         Row {
             CineChip("PLAY", billing.debugOverride == null) { billing.debugOverride = null }
             Tier.entries.forEach { t -> CineChip(t.label, billing.debugOverride == t) { billing.debugOverride = t } }
@@ -153,7 +159,7 @@ private fun PlanCard(title: String, tagline: String, current: Boolean, content: 
         Row(verticalAlignment = Alignment.CenterVertically) {
             Text(title, color = Cine.Accent, fontFamily = Cine.Mono, fontWeight = FontWeight.Black, fontSize = 16.sp,
                 modifier = Modifier.weight(1f))
-            if (current) Text("AKTIF", color = Cine.Ok, fontFamily = Cine.Mono, fontSize = 11.sp, fontWeight = FontWeight.Bold)
+            if (current) Text(tr("ACTIVE", "AKTIF"), color = Cine.Ok, fontFamily = Cine.Mono, fontSize = 11.sp, fontWeight = FontWeight.Bold)
         }
         Text(tagline, color = Cine.Text, fontSize = 13.sp, modifier = Modifier.padding(bottom = 6.dp))
         content()

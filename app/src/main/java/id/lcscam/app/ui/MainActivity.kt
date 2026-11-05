@@ -3,6 +3,8 @@ package id.lcscam.app.ui
 import android.Manifest
 import android.content.pm.ActivityInfo
 import android.content.pm.PackageManager
+import android.content.res.Configuration
+import android.view.Surface
 import android.os.Build
 import android.os.Bundle
 import android.view.OrientationEventListener
@@ -23,6 +25,7 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
@@ -40,6 +43,9 @@ import androidx.navigation.compose.composable
 import androidx.navigation.compose.rememberNavController
 import id.lcscam.app.LcsCamApp
 import id.lcscam.app.camera.OrientationMath
+import id.lcscam.app.i18n.I18n
+import id.lcscam.app.i18n.tr
+import id.lcscam.app.ui.splash.AnimatedSplash
 import id.lcscam.app.settings.UiOrientation
 import id.lcscam.app.ui.about.AboutScreen
 import id.lcscam.app.ui.camera.CameraScreen
@@ -62,8 +68,8 @@ class MainActivity : ComponentActivity() {
     private var snapped = 0
 
     private val permissionLauncher = registerForActivityResult(ActivityResultContracts.RequestMultiplePermissions()) {
+        // Only flip the state here: showing the camera screen opens the camera exactly once.
         permissionsGranted = hasCameraPermission()
-        if (permissionsGranted) container.streamController.ensureCameraOpen()
         container.audioEngine.refreshDevices()
     }
 
@@ -76,8 +82,10 @@ class MainActivity : ComponentActivity() {
             systemBarsBehavior = WindowInsetsControllerCompat.BEHAVIOR_SHOW_TRANSIENT_BARS_BY_SWIPE
         }
         permissionsGranted = hasCameraPermission()
+        I18n.apply(container.settings.settings.value.language)
         orientationListener = object : OrientationEventListener(this) {
             override fun onOrientationChanged(orientation: Int) {
+                reportScreenRotation()
                 val s = OrientationMath.snap(orientation, snapped)
                 if (s != snapped) {
                     snapped = s
@@ -88,6 +96,8 @@ class MainActivity : ComponentActivity() {
         setContent {
             LcsCamTheme {
                 val settings by container.settings.settings.collectAsStateWithLifecycle()
+                var showSplash by rememberSaveable { mutableStateOf(savedInstanceState == null) }
+                LaunchedEffect(settings.language) { I18n.apply(settings.language) }
                 LaunchedEffect(settings.uiOrientation) {
                     requestedOrientation = when (settings.uiOrientation) {
                         UiOrientation.PORTRAIT -> ActivityInfo.SCREEN_ORIENTATION_PORTRAIT
@@ -100,6 +110,7 @@ class MainActivity : ComponentActivity() {
                     else window.clearFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON)
                 }
                 when {
+                    showSplash -> AnimatedSplash { showSplash = false }
                     !settings.onboardingDone -> OnboardingScreen {
                         container.settings.update { it.copy(onboardingDone = true) }
                         if (!hasCameraPermission()) requestPermissions()
@@ -114,7 +125,27 @@ class MainActivity : ComponentActivity() {
 
     override fun onResume() {
         super.onResume()
+        reportScreenRotation()
         orientationListener?.takeIf { it.canDetectOrientation() }?.enable()
+    }
+
+    override fun onConfigurationChanged(newConfig: Configuration) {
+        super.onConfigurationChanged(newConfig)
+        reportScreenRotation()
+        I18n.apply(container.settings.settings.value.language) // device language may have changed
+    }
+
+    /** Tells the stream which way the interface is displayed (used by "Follow screen" output). */
+    private fun reportScreenRotation() {
+        val rotation = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) display?.rotation
+            else @Suppress("DEPRECATION") windowManager.defaultDisplay.rotation
+        val deg = when (rotation) {
+            Surface.ROTATION_90 -> 90
+            Surface.ROTATION_180 -> 180
+            Surface.ROTATION_270 -> 270
+            else -> 0
+        }
+        container.streamController.onScreenRotation(deg)
     }
 
     override fun onPause() {
@@ -140,7 +171,7 @@ class MainActivity : ComponentActivity() {
                 CameraScreen(vm, onOpenSettings = { nav.navigate("settings") }, onOpenPlans = { nav.navigate("plans") })
             }
             val back: () -> Unit = { nav.popBackStack() }
-            composable("settings") { SettingsHome(back) { nav.navigate(it) } }
+            composable("settings") { SettingsHome(c, back) { nav.navigate(it) } }
             composable("settings/camera") { CameraSettingsScreen(c, back) }
             composable("settings/ndi") { NdiSettingsScreen(c, back) }
             composable("settings/audio") { AudioSettingsScreen(c, back) }
@@ -158,12 +189,14 @@ private fun PermissionScreen(onRequest: () -> Unit) {
         Modifier.fillMaxSize().background(Cine.Black).safeDrawingPadding().padding(32.dp),
         verticalArrangement = Arrangement.Center, horizontalAlignment = Alignment.CenterHorizontally,
     ) {
-        Text("Camera access required", color = Cine.Text, fontSize = 20.sp)
-        Text("LCS Cam needs the camera to send video and the microphone to send audio over NDI. " +
-            "If you denied permanently, enable them in Android Settings › Apps.", color = Cine.Dim, fontSize = 14.sp,
+        Text(tr("Camera access required", "Akses kamera diperlukan"), color = Cine.Text, fontSize = 20.sp)
+        Text(tr("LCS Cam needs the camera to send video and the microphone to send audio over NDI. " +
+            "If you denied permanently, enable them in Android Settings › Apps.",
+            "LCS Cam membutuhkan kamera untuk mengirim video dan mikrofon untuk mengirim audio lewat NDI. " +
+            "Jika Anda menolak secara permanen, aktifkan di Pengaturan Android › Aplikasi."), color = Cine.Dim, fontSize = 14.sp,
             modifier = Modifier.padding(vertical = 16.dp))
         Button(onClick = onRequest, colors = ButtonDefaults.buttonColors(containerColor = Cine.Accent)) {
-            Text("GRANT PERMISSIONS", color = Cine.Black)
+            Text(tr("GRANT PERMISSIONS", "BERI IZIN"), color = Cine.Black)
         }
     }
 }

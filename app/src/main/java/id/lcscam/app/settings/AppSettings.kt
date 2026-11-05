@@ -2,6 +2,8 @@ package id.lcscam.app.settings
 
 import id.lcscam.app.audio.AudioSourceType
 import id.lcscam.app.domain.model.OutputOrientation
+import id.lcscam.app.i18n.AppLanguage
+import id.lcscam.app.i18n.tr
 
 data class OverlaySettings(
     val zebra: Boolean = false,
@@ -19,7 +21,14 @@ data class OverlaySettings(
 }
 
 /** Orientation of the app interface on the camera screen. */
-enum class UiOrientation(val label: String) { PORTRAIT("Vertical"), LANDSCAPE("Landscape"), AUTO("Auto-rotate") }
+enum class UiOrientation {
+    PORTRAIT, LANDSCAPE, AUTO;
+    val label: String get() = when (this) {
+        PORTRAIT -> tr("Vertical", "Vertikal")
+        LANDSCAPE -> tr("Landscape", "Lanskap")
+        AUTO -> tr("Auto-rotate", "Putar otomatis")
+    }
+}
 
 data class AppSettings(
     val sourceName: String = DEFAULT_SOURCE_NAME,
@@ -30,7 +39,8 @@ data class AppSettings(
     val width: Int = 1920,
     val height: Int = 1080,
     val fps: Int = 30,
-    val outputOrientation: OutputOrientation = OutputOrientation.PORTRAIT,
+    /** FOLLOW_SCREEN (default): the NDI output has exactly the orientation shown on screen. */
+    val outputOrientation: OutputOrientation = OutputOrientation.FOLLOW_SCREEN,
     val uiOrientation: UiOrientation = UiOrientation.PORTRAIT,
     val onboardingDone: Boolean = false,
     val mirrorFrontOutput: Boolean = false,
@@ -42,6 +52,9 @@ data class AppSettings(
     val audioSource: AudioSourceType = AudioSourceType.UNPROCESSED,
     val avOffsetMs: Int = 0,
     val keepScreenOn: Boolean = true,
+    /** Duration of preset/zoom-in/zoom-out moves in seconds; 0 = instant. */
+    val zoomDurationSec: Int = 0,
+    val language: AppLanguage = AppLanguage.SYSTEM,
     val overlays: OverlaySettings = OverlaySettings(),
 ) {
     companion object {

@@ -1,5 +1,6 @@
 package id.lcscam.app.ui.camera
 
+import id.lcscam.app.i18n.tr
 import android.content.res.Configuration
 import android.os.Build
 import android.os.SystemClock
@@ -63,6 +64,7 @@ import id.lcscam.app.billing.PlanLimits
 import id.lcscam.app.billing.Tier
 import id.lcscam.app.camera.ModeSelection
 import id.lcscam.app.camera.OrientationMath
+import id.lcscam.app.camera.ZoomRamp
 import id.lcscam.app.domain.model.AntibandingMode
 import id.lcscam.app.domain.model.CameraCapabilities
 import id.lcscam.app.domain.model.CameraControlState
@@ -142,14 +144,16 @@ fun CameraScreen(vm: CameraViewModel, onOpenSettings: () -> Unit, onOpenPlans: (
         AlertDialog(
             onDismissRequest = { vm.dismissSessionLimit() },
             containerColor = Cine.Panel,
-            title = { Text("Batas sesi gratis tercapai", color = Cine.Text) },
+            title = { Text(tr("Free session limit reached", "Batas sesi gratis tercapai"), color = Cine.Text) },
             text = {
-                Text("Versi Free menghentikan stream setelah ${PlanLimits.FREE_SESSION_MS / 60_000} menit. " +
-                    "Mulai lagi, atau upgrade ke Basic atau lebih tinggi untuk streaming tanpa batas waktu dan tanpa watermark.",
+                Text(tr("The Free version stops the stream after ${PlanLimits.FREE_SESSION_MS / 60_000} minutes. " +
+                    "Start again, or upgrade to Basic or higher for unlimited streaming without a watermark.",
+                    "Versi Free menghentikan stream setelah ${PlanLimits.FREE_SESSION_MS / 60_000} menit. " +
+                    "Mulai lagi, atau upgrade ke Basic atau lebih tinggi untuk streaming tanpa batas waktu dan tanpa watermark."),
                     color = Cine.Dim)
             },
-            confirmButton = { TextButton(onClick = { vm.dismissSessionLimit(); onOpenPlans() }) { Text("LIHAT PAKET", color = Cine.Accent) } },
-            dismissButton = { TextButton(onClick = { vm.dismissSessionLimit() }) { Text("TUTUP", color = Cine.Dim) } },
+            confirmButton = { TextButton(onClick = { vm.dismissSessionLimit(); onOpenPlans() }) { Text(tr("SEE PLANS", "LIHAT PAKET"), color = Cine.Accent) } },
+            dismissButton = { TextButton(onClick = { vm.dismissSessionLimit() }) { Text(tr("CLOSE", "TUTUP"), color = Cine.Dim) } },
         )
     }
 }
@@ -200,7 +204,7 @@ private fun rememberFreeRemaining(vm: CameraViewModel): String? {
     LaunchedEffect(stats.running) { while (stats.running) { now = SystemClock.elapsedRealtime(); delay(500) } }
     if (!stats.running) return "FREE ${limit / 60_000} MIN"
     val left = ((limit - (now - stats.startedAtElapsedMs)) / 1000).coerceAtLeast(0)
-    return String.format(Locale.US, "FREE %02d:%02d LEFT", left / 60, left % 60)
+    return String.format(Locale.US, tr("FREE %02d:%02d LEFT", "FREE SISA %02d:%02d"), left / 60, left % 60)
 }
 
 /** Compact NDI output strip for the vertical layout: status, start/stop, key stats, audio. */
@@ -242,7 +246,7 @@ private fun NdiStrip(vm: CameraViewModel, onOpenPlans: () -> Unit) {
                     .clickable(enabled = live || canStart) { if (live) vm.stop() else vm.start() },
                 contentAlignment = Alignment.Center,
             ) {
-                Text(if (live) "STOP STREAM" else "START STREAM", color = Color.Black, fontWeight = FontWeight.Black,
+                Text(if (live) tr("STOP STREAM", "HENTIKAN STREAM") else tr("START STREAM", "MULAI STREAM"), color = Color.Black, fontWeight = FontWeight.Black,
                     fontFamily = Cine.Mono, fontSize = 13.sp)
             }
         }
@@ -255,7 +259,7 @@ private fun NdiStrip(vm: CameraViewModel, onOpenPlans: () -> Unit) {
         detail?.let { Text(it, color = Cine.Rec, fontSize = 10.sp, maxLines = 2) }
         Row(Modifier.fillMaxWidth()) {
             val dur = if (stats.running) (now - stats.startedAtElapsedMs) / 1000 else 0
-            InfoCell("TIME", String.format(Locale.US, "%02d:%02d:%02d", dur / 3600, (dur / 60) % 60, dur % 60), Modifier.weight(1.4f))
+            InfoCell(tr("TIME", "WAKTU"), String.format(Locale.US, "%02d:%02d:%02d", dur / 3600, (dur / 60) % 60, dur % 60), Modifier.weight(1.4f))
             InfoCell("FPS", String.format(Locale.US, "%.1f", stats.currentFps), Modifier.weight(1f))
             InfoCell("RX", (ndi as? NdiStatus.SourceActive)?.connections?.toString() ?: "0", Modifier.weight(0.7f))
             InfoCell("DROP", stats.totalDropped.toString(), Modifier.weight(1f),
@@ -286,7 +290,7 @@ private fun TopStatusBar(vm: CameraViewModel, caps: CameraCapabilities?, compact
         val netText = when (net.transport) {
             Transport.WIFI -> if (compact) "WIFI" else "WIFI ${net.wifiRssiDbm?.let { "${it}dBm" } ?: ""}"
             Transport.ETHERNET -> "ETH"
-            Transport.NONE -> "NO NET"
+            Transport.NONE -> tr("NO NET", "TANPA JARINGAN")
             else -> net.transport.name
         }
         StatusPill(netText.trim(), if (net.connected) Cine.Ok else Cine.Rec)
@@ -300,23 +304,23 @@ private fun TopStatusBar(vm: CameraViewModel, caps: CameraCapabilities?, compact
             StatusPill(health.thermalLabel, if (health.throttling) Cine.Rec else Cine.Warn)
         }
         IconButton(onClick = onOpenSettings, modifier = Modifier.size(32.dp)) {
-            Icon(Icons.Filled.Settings, contentDescription = "Settings", tint = Cine.Text)
+            Icon(Icons.Filled.Settings, contentDescription = tr("Settings", "Pengaturan"), tint = Cine.Text)
         }
     }
 }
 
 fun ndiPill(s: NdiStatus): Pair<String, Color> = when (s) {
-    is NdiStatus.SdkNotInstalled -> "NDI SDK MISSING" to Cine.Rec
-    is NdiStatus.InitFailed -> "NDI INIT FAILED" to Cine.Rec
-    is NdiStatus.LibraryReady -> "NDI READY" to Cine.Dim
-    is NdiStatus.SenderInitialized -> "NDI SENDER UP" to Cine.Warn
+    is NdiStatus.SdkNotInstalled -> tr("NDI SDK MISSING", "NDI SDK TIDAK ADA") to Cine.Rec
+    is NdiStatus.InitFailed -> tr("NDI INIT FAILED", "NDI GAGAL DIMUAT") to Cine.Rec
+    is NdiStatus.LibraryReady -> tr("NDI READY", "NDI SIAP") to Cine.Dim
+    is NdiStatus.SenderInitialized -> tr("NDI SENDER UP", "NDI SENDER AKTIF") to Cine.Warn
     is NdiStatus.SourceActive -> when {
         s.onProgram -> "ON AIR" to Cine.Rec
         s.onPreview -> "PREVIEW" to Cine.Ok
         else -> "LIVE · ${s.connections} RX" to Cine.Accent
     }
-    NdiStatus.TransmissionStopped -> "NDI STOPPED" to Cine.Dim
-    is NdiStatus.SenderError -> "NDI ERROR" to Cine.Rec
+    NdiStatus.TransmissionStopped -> tr("NDI STOPPED", "NDI BERHENTI") to Cine.Dim
+    is NdiStatus.SenderError -> tr("NDI ERROR", "NDI GAGAL") to Cine.Rec
 }
 
 @Composable
@@ -428,7 +432,7 @@ private fun PreviewArea(vm: CameraViewModel, caps: CameraCapabilities?) {
                 Histogram(overlay, Modifier.align(Alignment.TopEnd).padding(6.dp).size(width = 128.dp, height = 56.dp))
             }
             if (BuildConfig.NDI_VALIDATION_BUILD) {
-                Text("CI VALIDATION BUILD · NO NDI SDK", color = Cine.Rec, fontFamily = Cine.Mono, fontSize = 11.sp,
+                Text(tr("CI VALIDATION BUILD · NO NDI SDK", "BUILD VALIDASI CI · TANPA NDI SDK"), color = Cine.Rec, fontFamily = Cine.Mono, fontSize = 11.sp,
                     modifier = Modifier.align(Alignment.BottomStart).background(Color.Black.copy(alpha = 0.6f)).padding(4.dp))
             }
         }
@@ -445,8 +449,8 @@ private fun CameraStateBanner(state: CameraState, modifier: Modifier) {
     val text = when (state) {
         is CameraState.Error -> state.message
         is CameraState.Disconnected -> state.reason
-        CameraState.PermissionRequired -> "Camera permission required"
-        CameraState.Opening -> "Opening camera…"
+        CameraState.PermissionRequired -> tr("Camera permission required", "Izin kamera diperlukan")
+        CameraState.Opening -> tr("Opening camera…", "Membuka kamera…")
         else -> null
     } ?: return
     Text(text, color = Color.White, fontSize = 12.sp,
@@ -468,7 +472,7 @@ private fun NdiPanel(vm: CameraViewModel, onOpenPlans: () -> Unit) {
 
     Row(Modifier.width(212.dp).fillMaxHeight().background(Cine.Panel)) {
         Column(Modifier.weight(1f).padding(8.dp).verticalScroll(rememberScrollState())) {
-            Text("NDI OUTPUT", style = Cine.label.copy(color = Cine.Accent))
+            Text(tr("NDI OUTPUT", "OUTPUT NDI"), style = Cine.label.copy(color = Cine.Accent))
             val name = when (val s = ndi) {
                 is NdiStatus.SourceActive -> s.sourceName
                 is NdiStatus.SenderInitialized -> s.sourceName
@@ -494,18 +498,18 @@ private fun NdiPanel(vm: CameraViewModel, onOpenPlans: () -> Unit) {
                     .clickable(enabled = live || canStart) { if (live) vm.stop() else vm.start() },
                 contentAlignment = Alignment.Center,
             ) {
-                Text(if (live) "STOP STREAM" else "START STREAM", color = Color.Black, fontWeight = FontWeight.Black,
+                Text(if (live) tr("STOP STREAM", "HENTIKAN STREAM") else tr("START STREAM", "MULAI STREAM"), color = Color.Black, fontWeight = FontWeight.Black,
                     fontFamily = Cine.Mono, fontSize = 13.sp)
             }
             Spacer(Modifier.height(6.dp))
             val dur = if (stats.running) (now - stats.startedAtElapsedMs) / 1000 else 0
-            InfoCell("DURATION", String.format(Locale.US, "%02d:%02d:%02d", dur / 3600, (dur / 60) % 60, dur % 60))
+            InfoCell(tr("DURATION", "DURASI"), String.format(Locale.US, "%02d:%02d:%02d", dur / 3600, (dur / 60) % 60, dur % 60))
             Row {
                 InfoCell("FPS", String.format(Locale.US, "%.1f", stats.currentFps), Modifier.weight(1f))
                 InfoCell("RX", (ndi as? NdiStatus.SourceActive)?.connections?.toString() ?: "0", Modifier.weight(1f))
             }
             Row {
-                InfoCell("DROPPED", stats.totalDropped.toString(), Modifier.weight(1f),
+                InfoCell(tr("DROPPED", "TERBUANG"), stats.totalDropped.toString(), Modifier.weight(1f),
                     valueColor = if (stats.totalDropped > 0) Cine.Warn else Cine.Text)
                 InfoCell("TX", String.format(Locale.US, "%.0fM", stats.txBitsPerSecond / 1e6), Modifier.weight(1f))
             }
@@ -539,8 +543,8 @@ private fun BottomBar(
     val noExp = !vm.has(Feature.MANUAL_EXPOSURE)
     Row(Modifier.fillMaxWidth().height(52.dp).background(Cine.Panel).horizontalScroll(rememberScrollState()),
         verticalAlignment = Alignment.CenterVertically) {
-        ControlButton("LENS", caps?.lens?.label?.substringBefore(" (") ?: "--", active == Panel.LENS, caps != null) { onSelect(Panel.LENS) }
-        ControlButton("FOCUS", when (c.focusMode) { FocusMode.CONTINUOUS -> "AF-C"; FocusMode.AUTO_LOCKED -> "AF-L"; FocusMode.MANUAL -> "MF" },
+        ControlButton(tr("LENS", "LENSA"), caps?.lens?.label?.substringBefore(" (") ?: "--", active == Panel.LENS, caps != null) { onSelect(Panel.LENS) }
+        ControlButton(tr("FOCUS", "FOKUS"), when (c.focusMode) { FocusMode.CONTINUOUS -> "AF-C"; FocusMode.AUTO_LOCKED -> "AF-L"; FocusMode.MANUAL -> "MF" },
             active == Panel.FOCUS, caps != null && (caps.autofocusAvailable || caps.manualFocusAvailable)) { onSelect(Panel.FOCUS) }
         ControlButton("ISO", if (c.autoExposure) "AUTO" else c.iso.toString(), active == Panel.ISO, caps?.manualIsoAvailable == true,
             locked = noExp) { onSelect(Panel.ISO) }
@@ -552,11 +556,11 @@ private fun BottomBar(
             caps != null && caps.zoomRange.upper > caps.zoomRange.lower) { onSelect(Panel.ZOOM) }
         ControlButton("EV", String.format(Locale.US, "%+d", c.exposureCompensation), active == Panel.EV,
             caps?.exposureCompensationRange != null && c.autoExposure, locked = noExp) { onSelect(Panel.EV) }
-        ControlButton("TOOLS", "VIEW", active == Panel.TOOLS, true) { onSelect(Panel.TOOLS) }
+        ControlButton(tr("TOOLS", "ALAT"), tr("VIEW", "TAMPILAN"), active == Panel.TOOLS, true) { onSelect(Panel.TOOLS) }
         ControlButton("STAB", listOfNotNull(if (c.ois && caps?.oisAvailable == true) "OIS" else null,
             if (c.eis && caps?.eisAvailable == true) "EIS" else null).joinToString("+").ifEmpty { "OFF" },
             active == Panel.STAB, caps != null) { onSelect(Panel.STAB) }
-        ControlButton("TORCH", if (c.torch) "ON" else "OFF", c.torch, caps?.flashAvailable == true) { onTorch() }
+        ControlButton(tr("TORCH", "SENTER"), if (c.torch) tr("ON", "NYALA") else tr("OFF", "MATI"), c.torch, caps?.flashAvailable == true) { onTorch() }
     }
 }
 
@@ -601,7 +605,7 @@ private fun ControlPanel(
                         onClick = gate(noMf) { vm.setFocusMode(FocusMode.AUTO_LOCKED) })
                     CineChip("MF", c.focusMode == FocusMode.MANUAL, caps.manualFocusAvailable == true, locked = noMf,
                         onClick = gate(noMf) { vm.setFocusMode(FocusMode.MANUAL) })
-                    Text("  Tap preview: focus · Long-press: focus lock", style = Cine.label)
+                    Text(tr("  Tap preview: focus · Long-press: focus lock", "  Ketuk preview: fokus · Tekan lama: kunci fokus"), style = Cine.label)
                 }
                 if (caps.manualFocusAvailable == true && !noMf) {
                     LabeledSlider("FOCUS ${if (c.focusDistanceDiopters <= 0.01f) "∞" else String.format(Locale.US, "%.2fm", 1f / c.focusDistanceDiopters)}",
@@ -638,30 +642,48 @@ private fun ControlPanel(
                         locked = noWb, onClick = gate(noWb) { vm.setAwbLock(!c.awbLock) })
                 }
                 if (noWb) {
-                    LockedNote("Kelvin, tint and AWB lock need the Pro plan or higher.", onOpenPlans)
+                    LockedNote(tr("Kelvin, tint and AWB lock need the Pro plan or higher.", "Kelvin, tint dan kunci AWB butuh paket Pro atau lebih tinggi."), onOpenPlans)
                 } else if (caps.manualWhiteBalanceKelvinAvailable == true) {
-                    LabeledSlider("KELVIN ~${c.kelvin}K (approx.)", c.kelvin.toFloat(), 2000f..10000f) { vm.setKelvin((it / 50).toInt() * 50) }
+                    LabeledSlider(tr("KELVIN ~${c.kelvin}K (approx.)", "KELVIN ~${c.kelvin}K (perkiraan)"), c.kelvin.toFloat(), 2000f..10000f) { vm.setKelvin((it / 50).toInt() * 50) }
                     LabeledSlider(String.format(Locale.US, "TINT %+.2f", c.tint), c.tint, -1f..1f,
                         enabled = c.whiteBalanceMode == WhiteBalanceMode.KELVIN) { vm.setTint(it) }
                 } else {
-                    Text("Manual Kelvin needs MANUAL_POST_PROCESSING, which this camera does not report.", style = Cine.label)
+                    Text(tr("Manual Kelvin needs MANUAL_POST_PROCESSING, which this camera does not report.", "Kelvin manual butuh MANUAL_POST_PROCESSING, yang tidak dilaporkan kamera ini."), style = Cine.label)
                 }
             }
             Panel.ZOOM -> {
                 val r = caps.zoomRange
                 if (r != null) {
+                    val ramping by vm.zoomRamping.collectAsStateWithLifecycle()
+                    val settings by vm.settings.collectAsStateWithLifecycle()
+                    val sec = settings.zoomDurationSec
+                    // Duration of every zoom move started from this panel (presets, IN, OUT).
                     chipRow {
+                        Text(tr("  SPEED ", "  DURASI "), style = Cine.label)
+                        ZoomRamp.DURATIONS_SEC.forEach { d ->
+                            CineChip(if (d == 0) tr("INSTANT", "INSTAN") else tr("${d}s", "${d} dtk"), sec == d) { vm.setZoomDuration(d) }
+                        }
+                    }
+                    chipRow {
+                        CineChip(tr("◀ ZOOM OUT", "◀ ZOOM OUT"), false, c.zoom > r.lower + 0.01f) { vm.zoomOut() }
+                        CineChip(tr("■ STOP", "■ STOP"), ramping, ramping) { vm.stopZoom() }
+                        CineChip(tr("ZOOM IN ▶", "ZOOM IN ▶"), false, c.zoom < r.upper - 0.01f) { vm.zoomIn() }
                         listOf(r.lower, 1f, 2f, 3f, 5f).filter { it in r.lower..r.upper }.distinct().forEach { z ->
-                            CineChip(String.format(Locale.US, "%.1fx", z), kotlin.math.abs(c.zoom - z) < 0.05f) { vm.setZoom(z) }
+                            CineChip(String.format(Locale.US, "%.1fx", z), !ramping && kotlin.math.abs(c.zoom - z) < 0.05f) { vm.zoomTo(z) }
                         }
                     }
                     LabeledSlider(String.format(Locale.US, "ZOOM %.2fx", c.zoom), c.zoom, r.lower..r.upper) { vm.setZoom(it) }
+                    Text(if (sec == 0) tr("Presets and IN/OUT jump instantly. The slider is always immediate.",
+                            "Preset dan IN/OUT langsung berpindah. Slider selalu langsung.")
+                        else tr("Presets and IN/OUT glide smoothly over $sec s. Tap STOP to hold the current zoom.",
+                            "Preset dan IN/OUT bergerak halus selama $sec detik. Ketuk STOP untuk menahan zoom saat ini."),
+                        style = Cine.label)
                 }
             }
             Panel.EV -> {
                 val r = caps.exposureCompensationRange
                 if (r != null) {
-                    if (noExp) LockedNote("EV compensation and AE lock need the Basic plan or higher.", onOpenPlans)
+                    if (noExp) LockedNote(tr("EV compensation and AE lock need the Basic plan or higher.", "Kompensasi EV dan kunci AE butuh paket Basic atau lebih tinggi."), onOpenPlans)
                     LabeledSlider(String.format(Locale.US, "EV %+.1f", c.exposureCompensation * caps.exposureCompensationStep),
                         c.exposureCompensation.toFloat(), r.lower.toFloat()..r.upper.toFloat(), enabled = c.autoExposure && !noExp,
                         steps = (r.upper - r.lower - 1).coerceAtLeast(0)) { vm.setEv(Math.round(it)) }
@@ -691,7 +713,7 @@ private fun ControlPanel(
 
 @Composable
 private fun LockedNote(text: String, onOpenPlans: () -> Unit) {
-    Text("🔒 $text  UPGRADE ›", color = Cine.Warn, fontSize = 11.sp, fontFamily = Cine.Mono,
+    Text("🔒 $text  ${tr("UPGRADE", "UPGRADE")} ›", color = Cine.Warn, fontSize = 11.sp, fontFamily = Cine.Mono,
         modifier = Modifier.padding(vertical = 6.dp).clickable(onClick = onOpenPlans))
 }
 

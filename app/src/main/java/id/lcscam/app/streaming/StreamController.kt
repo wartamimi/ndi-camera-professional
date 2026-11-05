@@ -98,6 +98,7 @@ class StreamController(
     private var deviceOrientation = 0
     private var lastLandscape = 270
     private var lastPortrait = 0
+    @Volatile private var screenOrientation = 0
     private var libraryReady = false
 
     val isStreaming: Boolean get() = streaming
@@ -106,8 +107,8 @@ class StreamController(
         camera.frameSink = pipeline
         camera.modeFilter = { m -> PlanLimits.modeAllowed(tier.value, m.resolution, m.fps) }
         pipeline.deviceOrientationProvider = {
-            id.lcscam.app.camera.OrientationMath.constrainDeviceOrientation(
-                deviceOrientation, lastLandscape, lastPortrait, settingsRepo.settings.value.outputOrientation)
+            id.lcscam.app.camera.OrientationMath.outputDeviceOrientation(
+                settingsRepo.settings.value.outputOrientation, deviceOrientation, lastLandscape, lastPortrait, screenOrientation)
         }
         audio.sink = AudioSink { buf, frames, ch, rate, startNs ->
             if (streaming) {
@@ -178,6 +179,11 @@ class StreamController(
         audio.configure(c)
     }
 
+    /** Display rotation of the interface in degrees (0/90/180/270), used by FOLLOW_SCREEN output. */
+    fun onScreenRotation(displayRotationDeg: Int) {
+        screenOrientation = id.lcscam.app.camera.OrientationMath.screenToDeviceOrientation(displayRotationDeg)
+    }
+
     fun onDeviceOrientation(snapped: Int) {
         deviceOrientation = snapped
         if (snapped == 90 || snapped == 270) lastLandscape = snapped else lastPortrait = snapped
@@ -234,9 +240,13 @@ class StreamController(
         openCameraFromSettings()
     }
 
+    private var openJob: Job? = null
+
     private fun openCameraFromSettings() {
+        // Coalesce concurrent requests (permission result + camera screen on first launch).
+        if (openJob?.isActive == true) return
         camera.refreshLenses()
-        scope.launch {
+        openJob = scope.launch {
             // Lens enumeration happens on the camera thread; wait briefly for the list.
             var lenses = camera.lenses.value
             var tries = 0

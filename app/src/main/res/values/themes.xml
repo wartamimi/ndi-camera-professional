@@ -9,7 +9,7 @@
     <!-- Launch (splash) theme: AndroidX SplashScreen, then switches to Theme.LcsCam. -->
     <style name="Theme.LcsCam.Starting" parent="Theme.SplashScreen">
         <item name="windowSplashScreenBackground">@color/splash_background</item>
-        <item name="windowSplashScreenAnimatedIcon">@drawable/ic_launcher_foreground</item>
+        <item name="windowSplashScreenAnimatedIcon">@drawable/splash_blank</item>
         <item name="windowSplashScreenIconBackgroundColor">@color/splash_background</item>
         <item name="postSplashScreenTheme">@style/Theme.LcsCam</item>
     </style>
