@@ -590,11 +590,24 @@ private fun ControlPanel(
                         CineChip(l.label, caps.lens?.key == l.key, locked = lk, onClick = gate(lk) { vm.selectLens(l) })
                     }
                 }
+                val modes = caps.modes.orEmpty()
+                val cur = (vm.cameraState.value as? CameraState.Running)?.mode
+                // Resolution and frame rate are chosen separately; only combinations the
+                // camera verified are reachable, the other value adapts when needed.
                 chipRow {
-                    caps.modes?.forEach { m ->
-                        val cur = (vm.cameraState.value as? CameraState.Running)?.mode
-                        val lk = !vm.modeAllowed(m)
-                        CineChip(m.label, cur == m, locked = lk, onClick = gate(lk) { vm.selectMode(m) })
+                    ModeSelection.resolutions(modes).forEach { r ->
+                        val target = ModeSelection.modeForResolution(modes, cur, r)
+                        val lk = target == null || !vm.modeAllowed(target)
+                        CineChip(r.label, cur?.resolution == r, locked = lk,
+                            onClick = gate(lk) { target?.let { vm.selectMode(it) } })
+                    }
+                }
+                chipRow {
+                    ModeSelection.frameRates(modes).forEach { f ->
+                        val target = ModeSelection.modeForFps(modes, cur, f)
+                        val lk = target == null || !vm.modeAllowed(target)
+                        CineChip("$f fps", cur?.fps == f, locked = lk,
+                            onClick = gate(lk) { target?.let { vm.selectMode(it) } })
                     }
                 }
             }

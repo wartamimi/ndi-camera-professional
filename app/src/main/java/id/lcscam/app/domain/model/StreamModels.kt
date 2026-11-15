@@ -28,6 +28,8 @@ data class StreamStatistics(
     /** Frames not encoded because no receiver was connected (CPU saving, not a drop). */
     val framesSkippedNoReceiver: Long = 0L,
     val audioBuffersSent: Long = 0L,
+    /** 20 ms audio buffers discarded because the network stalled for more than ~320 ms. */
+    val audioBuffersDropped: Long = 0L,
     val framesDroppedPipeline: Long = 0L,
     val framesDroppedCamera: Long = 0L,
     val currentFps: Float = 0f,

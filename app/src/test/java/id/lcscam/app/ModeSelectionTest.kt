@@ -45,4 +45,35 @@ class ModeSelectionTest {
         val iso = ModeSelection.isoStops(55, 7000)
         assertEquals(55, iso.first()); assertEquals(7000, iso.last())
     }
+
+    private val modes = listOf(
+        VideoMode(Resolution(1280, 720), 30), VideoMode(Resolution(1280, 720), 60),
+        VideoMode(Resolution(1920, 1080), 25), VideoMode(Resolution(1920, 1080), 30), VideoMode(Resolution(1920, 1080), 60),
+        VideoMode(Resolution(3840, 2160), 30),
+    )
+
+    @Test fun listsResolutionsAndFrameRates() {
+        assertEquals(listOf(Resolution(1280, 720), Resolution(1920, 1080), Resolution(3840, 2160)), ModeSelection.resolutions(modes))
+        assertEquals(listOf(25, 30, 60), ModeSelection.frameRates(modes))
+    }
+
+    @Test fun frameRateKeepsResolutionWhenPossible() {
+        val cur = VideoMode(Resolution(1920, 1080), 30)
+        assertEquals(VideoMode(Resolution(1920, 1080), 60), ModeSelection.modeForFps(modes, cur, 60))
+        assertEquals(VideoMode(Resolution(1920, 1080), 25), ModeSelection.modeForFps(modes, cur, 25))
+    }
+
+    @Test fun frameRateFallsBackToLargestResolutionNotAboveCurrent() {
+        val cur4k = VideoMode(Resolution(3840, 2160), 30)
+        assertEquals(VideoMode(Resolution(1920, 1080), 60), ModeSelection.modeForFps(modes, cur4k, 60))
+        val cur720 = VideoMode(Resolution(1280, 720), 30)
+        assertEquals(VideoMode(Resolution(1920, 1080), 25), ModeSelection.modeForFps(modes, cur720, 25))
+        assertEquals(null, ModeSelection.modeForFps(modes, cur720, 50))
+    }
+
+    @Test fun resolutionKeepsFrameRateWhenPossible() {
+        val cur = VideoMode(Resolution(1920, 1080), 60)
+        assertEquals(VideoMode(Resolution(1280, 720), 60), ModeSelection.modeForResolution(modes, cur, Resolution(1280, 720)))
+        assertEquals(VideoMode(Resolution(3840, 2160), 30), ModeSelection.modeForResolution(modes, cur, Resolution(3840, 2160)))
+    }
 }

@@ -1,5 +1,10 @@
 package id.lcscam.app.ui.settings
 
+import id.lcscam.app.camera.ModeSelection
+import id.lcscam.app.system.BatteryOptimization
+import androidx.compose.ui.platform.LocalContext
+import androidx.lifecycle.Lifecycle
+import androidx.lifecycle.compose.LifecycleEventEffect
 import id.lcscam.app.i18n.tr
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxWidth
@@ -47,6 +52,7 @@ import java.util.Locale
 @Composable
 fun SettingsHome(c: AppContainer, onBack: () -> Unit, navigate: (String) -> Unit) = SettingsPage(tr("Settings", "Pengaturan"), onBack) {
     val s by c.settings.settings.collectAsStateWithLifecycle()
+    BatteryOptimizationCard()
     // Always bilingual so the picker can be found whatever language is active.
     SectionTitle("Language / Bahasa")
     ChipRow {
@@ -96,7 +102,19 @@ fun CameraSettingsScreen(c: AppContainer, onBack: () -> Unit) = SettingsPage(tr(
     if (lenses.isEmpty()) Text(tr("Open the camera screen once to enumerate lenses.", "Buka layar kamera sekali untuk memuat daftar lensa."), color = Cine.Dim, fontSize = 12.sp)
     SectionTitle(tr("Video mode (verified for this lens)", "Mode video (terverifikasi untuk lensa ini)"))
     val running = (state as? CameraState.Running)?.mode
-    ChipRow { caps?.modes?.forEach { m -> CineChip(m.label, running == m) { c.streamController.selectMode(m) } } }
+    val modes = caps?.modes.orEmpty()
+    Text(tr("Resolution", "Resolusi"), color = Cine.Dim, fontSize = 12.sp)
+    ChipRow {
+        ModeSelection.resolutions(modes).forEach { r ->
+            CineChip(r.label, running?.resolution == r) { ModeSelection.modeForResolution(modes, running, r)?.let { c.streamController.selectMode(it) } }
+        }
+    }
+    Text(tr("Frame rate", "Frame rate"), color = Cine.Dim, fontSize = 12.sp)
+    ChipRow {
+        ModeSelection.frameRates(modes).forEach { f ->
+            CineChip("$f fps", running?.fps == f) { ModeSelection.modeForFps(modes, running, f)?.let { c.streamController.selectMode(it) } }
+        }
+    }
     Text(tr("Only resolution/fps pairs whose YUV stream duration and AE fps range are supported are listed. " +
         "4K NDI output is listed only if the sensor delivers YUV at that size and rate.",
         "Hanya pasangan resolusi/fps yang didukung durasi stream YUV dan rentang fps AE yang ditampilkan. " +
@@ -258,4 +276,23 @@ fun AudioSettingsScreen(c: AppContainer, onBack: () -> Unit) = SettingsPage("Aud
     Text(tr("${s.avOffsetMs} ms (positive delays audio timecodes)", "${s.avOffsetMs} ms (positif menunda timecode audio)"), color = Cine.Text, fontFamily = Cine.Mono)
     Slider(s.avOffsetMs.toFloat(), { v -> c.settings.update { it.copy(avOffsetMs = (v / 5).toInt() * 5) } }, valueRange = -300f..300f,
         colors = SliderDefaults.colors(thumbColor = Cine.Accent, activeTrackColor = Cine.Accent))
+}
+
+/** Shown while Android may stop background streaming to save battery; re-checked on resume. */
+@Composable
+fun BatteryOptimizationCard() {
+    val ctx = LocalContext.current
+    var restricted by remember { mutableStateOf(BatteryOptimization.isRestricted(ctx)) }
+    LifecycleEventEffect(Lifecycle.Event.ON_RESUME) { restricted = BatteryOptimization.isRestricted(ctx) }
+    if (!restricted) return
+    SectionTitle(tr("Stable background streaming", "Siaran background stabil"))
+    Text(tr("Battery optimisation is on for LCS Cam. Some phones stop the stream when the screen is off or the app is in the background. " +
+        "Open the battery settings and choose \"Unrestricted\" (or \"Don't optimise\"). On Xiaomi/Oppo/Vivo also allow autostart.",
+        "Optimasi baterai aktif untuk LCS Cam. Beberapa ponsel menghentikan siaran saat layar mati atau aplikasi di background. " +
+        "Buka pengaturan baterai dan pilih \"Tidak dibatasi\" (atau \"Jangan optimalkan\"). Di Xiaomi/Oppo/Vivo izinkan juga mulai otomatis (autostart)."),
+        color = Cine.Warn, fontSize = 12.sp)
+    Button(onClick = { BatteryOptimization.openSettings(ctx) },
+        colors = ButtonDefaults.buttonColors(containerColor = Cine.Accent), modifier = Modifier.padding(top = 8.dp)) {
+        Text(tr("OPEN BATTERY SETTINGS", "BUKA PENGATURAN BATERAI"), color = Cine.Black)
+    }
 }

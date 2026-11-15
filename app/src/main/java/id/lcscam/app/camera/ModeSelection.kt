@@ -45,6 +45,39 @@ object ModeSelection {
             ?: output
     }
 
+    /** Distinct resolutions offered by [modes], smallest first. */
+    fun resolutions(modes: List<VideoMode>): List<Resolution> = modes.map { it.resolution }.distinct().sortedBy { it.pixels }
+
+    /** Distinct frame rates offered by [modes] (at any resolution), lowest first. */
+    fun frameRates(modes: List<VideoMode>): List<Int> = modes.map { it.fps }.distinct().sorted()
+
+    /**
+     * Mode for a frame-rate choice: keeps [current]'s resolution when it supports [fps],
+     * otherwise the largest resolution not above the current one that does, otherwise the
+     * smallest resolution that does. Null if no mode has that rate.
+     */
+    fun modeForFps(modes: List<VideoMode>, current: VideoMode?, fps: Int): VideoMode? {
+        val withFps = modes.filter { it.fps == fps }
+        if (withFps.isEmpty()) return null
+        val res = current?.resolution ?: return withFps.maxByOrNull { it.resolution.pixels }
+        return withFps.firstOrNull { it.resolution == res }
+            ?: withFps.filter { it.resolution.pixels <= res.pixels }.maxByOrNull { it.resolution.pixels }
+            ?: withFps.minByOrNull { it.resolution.pixels }
+    }
+
+    /**
+     * Mode for a resolution choice: keeps [current]'s frame rate when the resolution supports
+     * it, otherwise the highest rate not above the current one, otherwise the lowest rate.
+     */
+    fun modeForResolution(modes: List<VideoMode>, current: VideoMode?, res: Resolution): VideoMode? {
+        val withRes = modes.filter { it.resolution == res }
+        if (withRes.isEmpty()) return null
+        val fps = current?.fps ?: 30
+        return withRes.firstOrNull { it.fps == fps }
+            ?: withRes.filter { it.fps <= fps }.maxByOrNull { it.fps }
+            ?: withRes.minByOrNull { it.fps }
+    }
+
     fun defaultMode(modes: List<VideoMode>): VideoMode? =
         modes.firstOrNull { it.resolution == Resolution(1920, 1080) && it.fps == 30 }
             ?: modes.firstOrNull { it.resolution == Resolution(1280, 720) && it.fps == 30 }

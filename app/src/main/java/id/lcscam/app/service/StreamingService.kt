@@ -31,6 +31,7 @@ import id.lcscam.app.ui.MainActivity
 class StreamingService : Service() {
     private var wakeLock: PowerManager.WakeLock? = null
     private var wifiLock: WifiManager.WifiLock? = null
+    private var wifiPerfLock: WifiManager.WifiLock? = null
 
     override fun onBind(intent: Intent?): IBinder? = null
 
@@ -70,11 +71,24 @@ class StreamingService : Service() {
                 setReferenceCounted(false); acquire()
             }
         }
+        if (wifiPerfLock == null) {
+            // The low-latency lock only takes effect while the app is in the foreground with the
+            // screen on. For background / screen-off streaming, a high-performance lock keeps
+            // Wi-Fi out of power-save, which otherwise adds 100+ ms latency spikes and bursts of
+            // retransmissions that receivers see as stutter.
+            val wm = applicationContext.getSystemService(Context.WIFI_SERVICE) as WifiManager
+            @Suppress("DEPRECATION")
+            wifiPerfLock = wm.createWifiLock(WifiManager.WIFI_MODE_FULL_HIGH_PERF, "NDICamera:wifi-perf").apply {
+                setReferenceCounted(false); acquire()
+            }
+        }
     }
 
     override fun onDestroy() {
         wakeLock?.takeIf { it.isHeld }?.release()
         wifiLock?.takeIf { it.isHeld }?.release()
+        wifiPerfLock?.takeIf { it.isHeld }?.release()
+        wifiPerfLock = null
         wakeLock = null
         wifiLock = null
         super.onDestroy()

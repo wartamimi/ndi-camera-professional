@@ -31,6 +31,7 @@ fun NetworkDiagnosticsScreen(c: AppContainer, onBack: () -> Unit) = SettingsPage
     val warnings by c.streamController.warnings.collectAsStateWithLifecycle()
     var test by remember { mutableStateOf<String?>(null) }
 
+    id.lcscam.app.ui.settings.BatteryOptimizationCard()
     SectionTitle(tr("Connection", "Koneksi"))
     KeyValue("State", if (n.connected) tr("CONNECTED", "TERHUBUNG") else tr("DISCONNECTED", "TERPUTUS"), warn = !n.connected)
     KeyValue("Transport", n.transport.name)
@@ -94,6 +95,7 @@ fun PerformanceDiagnosticsScreen(c: AppContainer, onBack: () -> Unit) = Settings
     KeyValue(tr("Video frames sent", "Frame video terkirim"), stats.videoFramesSent.toString())
     KeyValue(tr("Skipped: no receiver (saves CPU)", "Dilewati: belum ada receiver (hemat CPU)"), stats.framesSkippedNoReceiver.toString())
     KeyValue(tr("Audio buffers sent", "Buffer audio terkirim"), stats.audioBuffersSent.toString())
+    KeyValue(tr("Audio dropped: network stall", "Audio terbuang: jaringan macet"), stats.audioBuffersDropped.toString(), warn = stats.audioBuffersDropped > 0)
     KeyValue(tr("Dropped: NDI thread busy", "Terbuang: thread NDI sibuk"), stats.framesDroppedPipeline.toString(), warn = stats.framesDroppedPipeline > 0)
     KeyValue(tr("Dropped: camera gaps", "Terbuang: jeda kamera"), stats.framesDroppedCamera.toString(), warn = stats.framesDroppedCamera > 0)
     KeyValue("YUV→NV12 + send", String.format(Locale.US, "%.2f ms", stats.lastConvertMs))

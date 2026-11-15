@@ -115,6 +115,17 @@ class StreamController(
 
     val isStreaming: Boolean get() = streaming
 
+    /** NDI audio is sent from its own thread so a network stall never stalls the microphone. */
+    private val audioQueue = AudioSendQueue(
+        onThreadStart = { android.os.Process.setThreadPriority(android.os.Process.THREAD_PRIORITY_URGENT_AUDIO) },
+    ) { data, frames, ch, rate, tc ->
+        val s = sender
+        if (streaming && s != null) {
+            val rc = s.sendAudio(data, frames, ch, rate, tc)
+            if (rc == 0) audioBuffersSent.incrementAndGet() else audioErrors.incrementAndGet()
+        }
+    }
+
     init {
         camera.frameSink = pipeline
         camera.modeFilter = { m -> PlanLimits.modeAllowed(tier.value, m.resolution, m.fps) }
@@ -123,10 +134,7 @@ class StreamController(
                 settingsRepo.settings.value.outputOrientation, deviceOrientation, lastLandscape, lastPortrait, screenOrientation)
         }
         audio.sink = AudioSink { buf, frames, ch, rate, startNs ->
-            if (streaming) {
-                val rc = sender?.sendAudio(buf, frames, ch, rate, clock.audioTimecode(startNs)) ?: -1
-                if (rc == 0) audioBuffersSent.incrementAndGet() else audioErrors.incrementAndGet()
-            }
+            if (streaming) audioQueue.offer(buf, frames, ch, rate, clock.audioTimecode(startNs))
         }
         scope.launch { initializeNdi() }
         scope.launch { tier.collect { t -> enforcePlan(t) } }
@@ -325,6 +333,8 @@ class StreamController(
             pipeline.resetCounters()
             audioBuffersSent.set(0)
             audioErrors.set(0)
+            audioQueue.clear()
+            audioQueue.dropped.set(0)
             restarts = 0
             startedAt = SystemClock.elapsedRealtime()
             streaming = true
@@ -493,6 +503,7 @@ class StreamController(
                     videoFramesSent = frames,
                     framesSkippedNoReceiver = pipeline.framesIdle.get(),
                     audioBuffersSent = audioBuffersSent.get(),
+                    audioBuffersDropped = audioQueue.dropped.get(),
                     framesDroppedPipeline = pipeline.framesDroppedPipeline.get(),
                     framesDroppedCamera = pipeline.framesDroppedCamera.get(),
                     currentFps = fps,
