@@ -1,5 +1,7 @@
 package id.lcscam.app.domain.model
 
+import id.lcscam.app.i18n.tr
+
 enum class Transport { WIFI, ETHERNET, CELLULAR, VPN, OTHER, NONE }
 
 data class NetworkStatus(
@@ -20,12 +22,22 @@ data class NetworkStatus(
     val interfaceChangeCount: Int = 0,
 )
 
-enum class NetworkWarning(val message: String) {
-    DISCONNECTED("Network disconnected: NDI receivers cannot reach this device"),
-    WEAK_WIFI("Weak Wi-Fi signal: expect frame drops"),
-    LOW_LINK_SPEED("Wi-Fi link speed is low for the selected resolution"),
-    INTERFACE_CHANGED("Network interface changed: NDI sender was restarted"),
-    CELLULAR_ONLY("Only a cellular network is active: NDI requires a local network"),
-    UNSTABLE_TRANSMISSION("Unstable transmission: frames are being dropped"),
-    DISCOVERY_FAILED("This device could not discover its own NDI source (mDNS may be blocked)"),
+enum class NetworkWarning {
+    DISCONNECTED, WEAK_WIFI, LOW_LINK_SPEED, INTERFACE_CHANGED, CELLULAR_ONLY, UNSTABLE_TRANSMISSION, DISCOVERY_FAILED;
+
+    val message: String get() = when (this) {
+        DISCONNECTED -> tr("Network disconnected: NDI receivers cannot reach this device",
+            "Jaringan terputus: receiver NDI tidak dapat menjangkau perangkat ini")
+        WEAK_WIFI -> tr("Weak Wi-Fi signal: expect frame drops", "Sinyal Wi-Fi lemah: frame bisa terputus")
+        LOW_LINK_SPEED -> tr("Wi-Fi link speed is low for the selected resolution",
+            "Kecepatan link Wi-Fi terlalu rendah untuk resolusi yang dipilih")
+        INTERFACE_CHANGED -> tr("Network interface changed: NDI sender was restarted",
+            "Antarmuka jaringan berubah: sender NDI dimulai ulang")
+        CELLULAR_ONLY -> tr("Only a cellular network is active: NDI requires a local network",
+            "Hanya jaringan seluler yang aktif: NDI membutuhkan jaringan lokal")
+        UNSTABLE_TRANSMISSION -> tr("Unstable transmission: frames are being dropped",
+            "Transmisi tidak stabil: ada frame yang terbuang")
+        DISCOVERY_FAILED -> tr("This device could not discover its own NDI source (mDNS may be blocked)",
+            "Perangkat ini tidak menemukan source NDI-nya sendiri (mDNS mungkin diblokir)")
+    }
 }

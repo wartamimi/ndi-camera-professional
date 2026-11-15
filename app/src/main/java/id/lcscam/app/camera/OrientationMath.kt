@@ -24,14 +24,26 @@ object OrientationMath {
     }
 
     /**
-     * Picks the device orientation used for the NDI output: in LANDSCAPE mode a portrait device
-     * orientation is replaced by the last landscape orientation (and vice versa).
+     * Picks the device orientation used for the NDI output.
+     * - FOLLOW_SCREEN: the orientation the interface is displayed in ([screenOrientation], from
+     *   [screenToDeviceOrientation]), so receivers get exactly the framing shown on the phone.
+     * - LANDSCAPE: a portrait device orientation is replaced by the last landscape one.
+     * - PORTRAIT: a landscape device orientation is replaced by the last portrait one.
      */
-    fun constrainDeviceOrientation(device: Int, lastLandscape: Int, lastPortrait: Int, mode: OutputOrientation): Int =
-        when (mode) {
-            OutputOrientation.LANDSCAPE -> if (device == 90 || device == 270) device else lastLandscape
-            OutputOrientation.PORTRAIT -> if (device == 0 || device == 180) device else lastPortrait
-        }
+    fun outputDeviceOrientation(
+        mode: OutputOrientation, device: Int, lastLandscape: Int, lastPortrait: Int, screenOrientation: Int,
+    ): Int = when (mode) {
+        OutputOrientation.FOLLOW_SCREEN -> screenOrientation
+        OutputOrientation.LANDSCAPE -> if (device == 90 || device == 270) device else lastLandscape
+        OutputOrientation.PORTRAIT -> if (device == 0 || device == 180) device else lastPortrait
+    }
+
+    /**
+     * Converts a display rotation (Surface.ROTATION_* in degrees) to the equivalent
+     * OrientationEventListener angle: a screen rotated 90 degrees (device top to the left)
+     * corresponds to a device orientation of 270.
+     */
+    fun screenToDeviceOrientation(displayRotationDeg: Int): Int = Math.floorMod(-displayRotationDeg, 360)
 
     /** Rotation between the sensor image and what the preview displays for a display rotation. */
     fun previewRotation(sensorOrientation: Int, displayRotationDeg: Int, frontFacing: Boolean): Int =

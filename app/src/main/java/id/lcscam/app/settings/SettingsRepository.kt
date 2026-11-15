@@ -11,6 +11,7 @@ import androidx.datastore.preferences.core.stringPreferencesKey
 import androidx.datastore.preferences.preferencesDataStore
 import id.lcscam.app.audio.AudioSourceType
 import id.lcscam.app.domain.model.OutputOrientation
+import id.lcscam.app.i18n.AppLanguage
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
@@ -34,7 +35,8 @@ class SettingsRepository(private val context: Context, private val scope: Corout
         val width = intPreferencesKey("width")
         val height = intPreferencesKey("height")
         val fps = intPreferencesKey("fps")
-        val orientation = stringPreferencesKey("output_orientation")
+        // v2: FOLLOW_SCREEN became the default; older installs stored PORTRAIT on every save.
+        val orientation = stringPreferencesKey("output_orientation_v2")
         val uiOrientation = stringPreferencesKey("ui_orientation")
         val onboarding = booleanPreferencesKey("onboarding_done")
         val mirrorFront = booleanPreferencesKey("mirror_front")
@@ -46,6 +48,8 @@ class SettingsRepository(private val context: Context, private val scope: Corout
         val audioSource = stringPreferencesKey("audio_source")
         val avOffset = intPreferencesKey("av_offset_ms")
         val keepScreenOn = booleanPreferencesKey("keep_screen_on")
+        val zoomDuration = intPreferencesKey("zoom_duration_sec")
+        val language = stringPreferencesKey("language")
         val zebra = booleanPreferencesKey("ov_zebra")
         val zebraLevel = intPreferencesKey("ov_zebra_level")
         val peaking = booleanPreferencesKey("ov_peaking")
@@ -81,6 +85,8 @@ class SettingsRepository(private val context: Context, private val scope: Corout
             audioSource = this[K.audioSource]?.let { runCatching { AudioSourceType.valueOf(it) }.getOrNull() } ?: d.audioSource,
             avOffsetMs = this[K.avOffset] ?: d.avOffsetMs,
             keepScreenOn = this[K.keepScreenOn] ?: d.keepScreenOn,
+            zoomDurationSec = (this[K.zoomDuration] ?: d.zoomDurationSec).coerceIn(0, 8),
+            language = this[K.language]?.let { runCatching { AppLanguage.valueOf(it) }.getOrNull() } ?: d.language,
             overlays = OverlaySettings(
                 zebra = this[K.zebra] ?: o.zebra,
                 zebraLevel = this[K.zebraLevel] ?: o.zebraLevel,
@@ -125,6 +131,8 @@ class SettingsRepository(private val context: Context, private val scope: Corout
                 p[K.audioSource] = s.audioSource.name
                 p[K.avOffset] = s.avOffsetMs
                 p[K.keepScreenOn] = s.keepScreenOn
+                p[K.zoomDuration] = s.zoomDurationSec.coerceIn(0, 8)
+                p[K.language] = s.language.name
                 val o = s.overlays
                 p[K.zebra] = o.zebra
                 p[K.zebraLevel] = o.zebraLevel
