@@ -25,6 +25,8 @@ data class StreamStatistics(
     val running: Boolean = false,
     val startedAtElapsedMs: Long = 0L,
     val videoFramesSent: Long = 0L,
+    /** Frames not encoded because no receiver was connected (CPU saving, not a drop). */
+    val framesSkippedNoReceiver: Long = 0L,
     val audioBuffersSent: Long = 0L,
     val framesDroppedPipeline: Long = 0L,
     val framesDroppedCamera: Long = 0L,

@@ -35,7 +35,10 @@ source is advertised, and frames arrive at a receiver is only known after the de
 | Zoom, torch, OIS, EIS, anti-banding | ✓ | ✓ | – | – | – |
 | Zebra, focus peaking, histogram (native) | ✓ | ✓ | ✓ (native analyzer) | – | – |
 | Thirds, crosshair, safe areas | ✓ | ✓ | – | – | – |
-| YUV_420_888 → NV12 conversion with rotation/mirror | ✓ | ✓ | ✓ (native, ASan) | – | – |
+| YUV_420_888 → NV12 conversion with rotation/mirror (block-based, exhaustive reference test) | ✓ | ✓ | ✓ (native, ASan) | – | – |
+| Skip encoding when no receiver is connected | ✓ | ✓ | – | – | – |
+| Debounced sender recovery after network change, no duplicate senders | ✓ | ✓ | ✓ (decision logic) | – | – |
+| Camera stall watchdog | ✓ | ✓ | – | – | – |
 | NDI init / SDK-missing / init-failed states | ✓ | ✓ | – | – | – |
 | NDI sender create/destroy, async video, FLTP audio | ✓ | ✓ | – | – | – |
 | Tally, connection count, source name | ✓ | ✓ | – | – | – |

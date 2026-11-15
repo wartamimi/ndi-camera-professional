@@ -2,6 +2,7 @@
 #include <Processing.NDI.Lib.h>
 
 #include <atomic>
+#include <chrono>
 #include <cstdint>
 #include <mutex>
 #include <string>
@@ -19,7 +20,8 @@ public:
     static NdiSender* create(const char* name, const char* groups, bool clock_video);
     ~NdiSender();
 
-    // Returns 0 on success, negative on error.
+    // Returns 0 when the frame was sent, 1 when it was skipped because no receiver is connected
+    // (nothing is converted or compressed then), negative on error.
     int send_video(const Yuv420Planes& src, const Transform& t, int fps_n, int fps_d, int64_t timecode, const char* watermark);
     int send_audio_interleaved(const float* interleaved, int frames, int channels, int sample_rate, int64_t timecode);
 
@@ -30,6 +32,10 @@ public:
     uint64_t video_frames_sent() const { return video_frames_.load(); }
     uint64_t audio_frames_sent() const { return audio_frames_.load(); }
 
+    // How often the receiver count is re-read while frames are flowing. A receiver that connects
+    // gets its first frame at most this much later.
+    static constexpr std::chrono::milliseconds kConnectionPollInterval{100};
+
 private:
     explicit NdiSender(NDIlib_send_instance_t inst) : inst_(inst) {}
     NDIlib_send_instance_t inst_;
@@ -39,6 +45,8 @@ private:
     int next_buffer_ = 0;
     int cur_w_ = 0, cur_h_ = 0;
     bool async_pending_ = false;
+    bool has_receivers_ = false;
+    std::chrono::steady_clock::time_point next_connection_check_{};
     std::vector<float> planar_;
     std::atomic<uint64_t> video_frames_{0};
     std::atomic<uint64_t> audio_frames_{0};

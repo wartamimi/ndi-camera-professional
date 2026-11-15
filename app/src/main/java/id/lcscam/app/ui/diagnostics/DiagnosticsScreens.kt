@@ -89,6 +89,7 @@ fun PerformanceDiagnosticsScreen(c: AppContainer, onBack: () -> Unit) = Settings
     KeyValue("Mode", (cam as? CameraState.Running)?.mode?.label ?: cam::class.simpleName.orEmpty())
     KeyValue("Current FPS", String.format(Locale.US, "%.2f", stats.currentFps))
     KeyValue("Video frames sent", stats.videoFramesSent.toString())
+    KeyValue("Skipped: no receiver (saves CPU)", stats.framesSkippedNoReceiver.toString())
     KeyValue("Audio buffers sent", stats.audioBuffersSent.toString())
     KeyValue("Dropped: NDI thread busy", stats.framesDroppedPipeline.toString(), warn = stats.framesDroppedPipeline > 0)
     KeyValue("Dropped: camera gaps", stats.framesDroppedCamera.toString(), warn = stats.framesDroppedCamera > 0)
