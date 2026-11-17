@@ -46,7 +46,11 @@ class FramePipeline(
     /** Free plan: burn the watermark into the NDI output. */
     @Volatile var watermark: Boolean = true
 
+    /** Every frame the camera delivered (used by the camera-stall watchdog). */
+    val framesReceived = AtomicLong()
     val framesSent = AtomicLong()
+    /** Frames not converted/sent because no NDI receiver was connected (saves CPU, not an error). */
+    val framesIdle = AtomicLong()
     val framesDroppedPipeline = AtomicLong()
     val framesDroppedCamera = AtomicLong()
     val sendErrors = AtomicLong()
@@ -57,11 +61,12 @@ class FramePipeline(
     private var frameCounter = 0L
 
     fun resetCounters() {
-        framesSent.set(0); framesDroppedPipeline.set(0); framesDroppedCamera.set(0); sendErrors.set(0)
+        framesSent.set(0); framesIdle.set(0); framesDroppedPipeline.set(0); framesDroppedCamera.set(0); sendErrors.set(0)
         lastSensorTs = 0L
     }
 
     override fun onFrame(image: Image, sensorTimestampNs: Long, timestampIsBoottime: Boolean, mode: VideoMode, lens: LensDescriptor, sensorOrientation: Int) {
+        framesReceived.incrementAndGet()
         // Camera-side drop detection from sensor timestamp gaps (camera-frames thread only).
         val expected = 1_000_000_000L / mode.fps
         if (lastSensorTs != 0L && sender != null) {
@@ -103,8 +108,14 @@ class FramePipeline(
             val t0 = SystemClock.elapsedRealtimeNanos()
             val rc = s.sendVideo(frame, rotation, front && mirrorFrontCamera, p.mode.fps * 1000, 1000,
                 clock.videoTimecode(p.ts, p.boottime), watermark)
-            lastConvertMs = (SystemClock.elapsedRealtimeNanos() - t0) / 1e6f
-            if (rc == 0) framesSent.incrementAndGet() else sendErrors.incrementAndGet()
+            when {
+                rc == 0 -> {
+                    lastConvertMs = (SystemClock.elapsedRealtimeNanos() - t0) / 1e6f
+                    framesSent.incrementAndGet()
+                }
+                rc == NdiSender.SKIPPED_NO_RECEIVER -> framesIdle.incrementAndGet()
+                else -> sendErrors.incrementAndGet()
+            }
         }
         frameCounter++
         // Overlay analysis at roughly 10 Hz on a downsampled grid.

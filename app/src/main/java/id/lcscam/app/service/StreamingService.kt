@@ -1,5 +1,6 @@
 package id.lcscam.app.service
 
+import id.lcscam.app.i18n.tr
 import android.app.Notification
 import android.app.NotificationChannel
 import android.app.NotificationManager
@@ -30,6 +31,7 @@ import id.lcscam.app.ui.MainActivity
 class StreamingService : Service() {
     private var wakeLock: PowerManager.WakeLock? = null
     private var wifiLock: WifiManager.WifiLock? = null
+    private var wifiPerfLock: WifiManager.WifiLock? = null
 
     override fun onBind(intent: Intent?): IBinder? = null
 
@@ -69,11 +71,24 @@ class StreamingService : Service() {
                 setReferenceCounted(false); acquire()
             }
         }
+        if (wifiPerfLock == null) {
+            // The low-latency lock only takes effect while the app is in the foreground with the
+            // screen on. For background / screen-off streaming, a high-performance lock keeps
+            // Wi-Fi out of power-save, which otherwise adds 100+ ms latency spikes and bursts of
+            // retransmissions that receivers see as stutter.
+            val wm = applicationContext.getSystemService(Context.WIFI_SERVICE) as WifiManager
+            @Suppress("DEPRECATION")
+            wifiPerfLock = wm.createWifiLock(WifiManager.WIFI_MODE_FULL_HIGH_PERF, "NDICamera:wifi-perf").apply {
+                setReferenceCounted(false); acquire()
+            }
+        }
     }
 
     override fun onDestroy() {
         wakeLock?.takeIf { it.isHeld }?.release()
         wifiLock?.takeIf { it.isHeld }?.release()
+        wifiPerfLock?.takeIf { it.isHeld }?.release()
+        wifiPerfLock = null
         wakeLock = null
         wifiLock = null
         super.onDestroy()
@@ -88,7 +103,7 @@ class StreamingService : Service() {
     private fun buildNotification(source: String): Notification {
         val nm = getSystemService(NotificationManager::class.java)
         if (nm.getNotificationChannel(CHANNEL) == null) {
-            nm.createNotificationChannel(NotificationChannel(CHANNEL, getString(R.string.notif_channel), NotificationManager.IMPORTANCE_LOW))
+            nm.createNotificationChannel(NotificationChannel(CHANNEL, tr("NDI streaming", "Streaming NDI"), NotificationManager.IMPORTANCE_LOW))
         }
         val open = PendingIntent.getActivity(this, 0, Intent(this, MainActivity::class.java)
             .addFlags(Intent.FLAG_ACTIVITY_SINGLE_TOP), PendingIntent.FLAG_IMMUTABLE)
@@ -96,11 +111,11 @@ class StreamingService : Service() {
             PendingIntent.FLAG_IMMUTABLE)
         return NotificationCompat.Builder(this, CHANNEL)
             .setSmallIcon(R.drawable.ic_stat_stream)
-            .setContentTitle(getString(R.string.notif_title))
+            .setContentTitle(tr("NDI stream live", "Stream NDI sedang live"))
             .setContentText(source)
             .setOngoing(true)
             .setContentIntent(open)
-            .addAction(0, getString(R.string.stop_stream), stop)
+            .addAction(0, tr("STOP STREAM", "HENTIKAN STREAM"), stop)
             .setForegroundServiceBehavior(NotificationCompat.FOREGROUND_SERVICE_IMMEDIATE)
             .build()
     }

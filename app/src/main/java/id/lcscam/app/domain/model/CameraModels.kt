@@ -48,6 +48,22 @@ enum class AwbPreset(val label: String) {
 enum class AntibandingMode(val label: String) { OFF("OFF"), HZ50("50 Hz"), HZ60("60 Hz"), AUTO("AUTO") }
 
 /** Hardware capabilities of the active lens. Everything the UI enables comes from here. */
+/**
+ * What the camera HAL reports about frame rates. A mode is offered only when an AE target fps
+ * range reaches the rate AND the YUV_420_888 stream (the CPU-readable format NDI needs) can
+ * run that fast at that size. Many phones run 60 fps only on the hardware video-encoder path
+ * (PRIVATE format) or only in their own camera app, which this report makes visible.
+ */
+data class FrameRateReport(
+    val aeFpsRanges: List<Pair<Int, Int>>,
+    /** Max fps of the YUV_420_888 stream per offered candidate size (0 = no limit reported). */
+    val yuvMaxFps: Map<Resolution, Int>,
+    /** Max fps of the PRIVATE (encoder/preview) stream per candidate size. */
+    val privateMaxFps: Map<Resolution, Int>,
+    /** Constrained high-speed (slow-motion) fps ranges; not usable for a regular stream. */
+    val highSpeedFps: List<Pair<Int, Int>>,
+)
+
 data class CameraCapabilities(
     val lens: LensDescriptor,
     val hardwareLevel: String,
@@ -73,6 +89,8 @@ data class CameraCapabilities(
     val antibandingModes: List<AntibandingMode>,
     val maxAfRegions: Int,
     val maxAeRegions: Int,
+    /** Raw frame-rate data from the camera, shown in diagnostics to explain missing modes. */
+    val frameRateReport: FrameRateReport? = null,
 ) {
     val manualFocusAvailable: Boolean get() = minFocusDistanceDiopters > 0f && manualSensor
     val autofocusAvailable: Boolean get() = afModes.any { it != 0 }

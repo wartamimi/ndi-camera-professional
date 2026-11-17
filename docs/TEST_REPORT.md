@@ -28,6 +28,11 @@ source is advertised, and frames arrive at a receiver is only known after the de
 | Supported resolution/fps detection | ✓ | ✓ | ✓ (mode filter logic) | – | – |
 | Preview, session management, camera switching | ✓ | ✓ | – | – | – |
 | Orientation correction (output rotation, tap mapping) | ✓ | ✓ | ✓ | – | – |
+| NDI output follows the interface orientation ("Follow screen") | ✓ | see CI | ✓ (orientation math) | – | – |
+| Camera opens once after first-run permission grant (no restart) | ✓ | see CI | – | – | – |
+| Timed zoom moves 1–8 s (eased, log-scale) | ✓ | see CI | ✓ (ramp math) | – | – |
+| Indonesian / English interface, language picker, region default | ✓ | see CI | ✓ (region rule) | – | – |
+| Animated splash logo | ✓ | see CI | – | – | – |
 | Camera interruption recovery | ✓ | ✓ | – | – | – |
 | Manual ISO / shutter / EV / AE lock | ✓ | ✓ | ✓ (stops, labels) | – | – |
 | Focus: AF-C, tap focus, AF lock, MF | ✓ | ✓ | – | – | – |
@@ -35,7 +40,10 @@ source is advertised, and frames arrive at a receiver is only known after the de
 | Zoom, torch, OIS, EIS, anti-banding | ✓ | ✓ | – | – | – |
 | Zebra, focus peaking, histogram (native) | ✓ | ✓ | ✓ (native analyzer) | – | – |
 | Thirds, crosshair, safe areas | ✓ | ✓ | – | – | – |
-| YUV_420_888 → NV12 conversion with rotation/mirror | ✓ | ✓ | ✓ (native, ASan) | – | – |
+| YUV_420_888 → NV12 conversion with rotation/mirror (block-based, exhaustive reference test) | ✓ | ✓ | ✓ (native, ASan) | – | – |
+| Skip encoding when no receiver is connected | ✓ | ✓ | – | – | – |
+| Debounced sender recovery after network change, no duplicate senders | ✓ | ✓ | ✓ (decision logic) | – | – |
+| Camera stall watchdog | ✓ | ✓ | – | – | – |
 | NDI init / SDK-missing / init-failed states | ✓ | ✓ | – | – | – |
 | NDI sender create/destroy, async video, FLTP audio | ✓ | ✓ | – | – | – |
 | Tally, connection count, source name | ✓ | ✓ | – | – | – |
@@ -60,7 +68,7 @@ None of these may be reported as passed until performed on hardware.
 
 | Item | Implemented | Compiled (CI) | Unit-tested | Device-tested |
 |---|---|---|---|---|
-| Plans Free/Basic/Pro/Ultra/Max, feature gating | ✓ | ✓ | ✓ (PlansTest) | – |
+| Plans Free/Pro/Max, feature gating | ✓ | ✓ | ✓ (PlansTest) | – |
 | Google Play Billing 8 (subscriptions, lifetime, restore) | ✓ | ✓ | – | – (needs a Play test track) |
 | Free watermark burned into NDI output | ✓ | ✓ | ✓ (native host test) | – |
 | Free 15-minute session limit + dialog | ✓ | ✓ | – | – |

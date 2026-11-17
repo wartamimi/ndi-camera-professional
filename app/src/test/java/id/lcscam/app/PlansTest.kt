@@ -22,10 +22,8 @@ class PlansTest {
         assertFalse(PlanLimits.modeAllowed(Tier.FREE, fhd, 30))
     }
 
-    @Test fun basicAllows1080p30Only() {
-        assertTrue(PlanLimits.modeAllowed(Tier.BASIC, fhd, 30))
-        assertFalse(PlanLimits.modeAllowed(Tier.BASIC, fhd, 60))
-        assertFalse(PlanLimits.modeAllowed(Tier.BASIC, uhd, 30))
+    @Test fun onlyThreePlans() {
+        assertEquals(listOf(Tier.FREE, Tier.PRO, Tier.MAX), Tier.entries.toList())
     }
 
     @Test fun proAllows1080p60NotUhd() {
@@ -33,18 +31,22 @@ class PlansTest {
         assertFalse(PlanLimits.modeAllowed(Tier.PRO, uhd, 30))
     }
 
-    @Test fun ultraAndMaxAllowUhd() {
-        assertTrue(PlanLimits.modeAllowed(Tier.ULTRA, uhd, 60))
+    @Test fun maxAllowsUhd() {
         assertTrue(PlanLimits.modeAllowed(Tier.MAX, uhd, 60))
+    }
+
+    @Test fun proHasEveryFeatureExcept4k() {
+        Feature.entries.filter { it != Feature.RES_4K }.forEach { assertTrue(it.name, it.availableIn(Tier.PRO)) }
+        assertFalse(Feature.RES_4K.availableIn(Tier.PRO))
     }
 
     @Test fun freeHasSessionLimitWatermarkAndMono() {
         assertEquals(15L * 60_000L, PlanLimits.sessionLimitMs(Tier.FREE))
         assertTrue(PlanLimits.watermark(Tier.FREE))
         assertEquals(1, PlanLimits.maxAudioChannels(Tier.FREE))
-        assertNull(PlanLimits.sessionLimitMs(Tier.BASIC))
-        assertFalse(PlanLimits.watermark(Tier.BASIC))
-        assertEquals(2, PlanLimits.maxAudioChannels(Tier.BASIC))
+        assertNull(PlanLimits.sessionLimitMs(Tier.PRO))
+        assertFalse(PlanLimits.watermark(Tier.PRO))
+        assertEquals(2, PlanLimits.maxAudioChannels(Tier.PRO))
     }
 
     @Test fun maxUnlocksEveryFeature() {
@@ -57,6 +59,9 @@ class PlansTest {
         assertEquals(Tier.FREE, PlanCatalog.tierFromOwnedProducts(listOf("unknown")))
         assertEquals(Tier.PRO, PlanCatalog.tierFromOwnedProducts(listOf("ndicam_basic", "ndicam_pro")))
         assertEquals(Tier.MAX, PlanCatalog.tierFromOwnedProducts(listOf("ndicam_max_lifetime", "ndicam_ultra")))
+        // Legacy IDs from the old five-plan line-up map to Pro.
+        assertEquals(Tier.PRO, PlanCatalog.tierFromOwnedProducts(listOf("ndicam_basic")))
+        assertEquals(Tier.PRO, PlanCatalog.tierFromOwnedProducts(listOf("ndicam_ultra")))
     }
 
     @Test fun everyPaidTierHasExactlyOneProduct() {

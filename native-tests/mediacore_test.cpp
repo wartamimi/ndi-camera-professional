@@ -132,6 +132,61 @@ static void test_watermark() {
     burn_watermark_nv12(nullptr, w, h, "X");    // must not crash
 }
 
+
+// Straightforward per-pixel reference: mirror flips the output x, then the clockwise rotation
+// maps output to source coordinates. The optimised converter must match it bit for bit.
+static void reference_nv12(const Img& im, const Transform& t, std::vector<uint8_t>& out) {
+    int ow, oh; output_size(im.w, im.h, t.rotation, &ow, &oh);
+    out.assign(nv12_size(ow, oh), 0);
+    auto map = [&](int x, int y, int w_out, int sw, int sh, int* sx, int* sy) {
+        if (t.mirror) x = w_out - 1 - x;
+        switch (t.rotation) {
+            case 90:  *sx = y;          *sy = sh - 1 - x; break;
+            case 180: *sx = sw - 1 - x; *sy = sh - 1 - y; break;
+            case 270: *sx = sw - 1 - y; *sy = x;          break;
+            default:  *sx = x;          *sy = y;          break;
+        }
+    };
+    int sx, sy;
+    for (int y = 0; y < oh; ++y) for (int x = 0; x < ow; ++x) {
+        map(x, y, ow, im.w, im.h, &sx, &sy);
+        out[static_cast<size_t>(y) * ow + x] = im.y[static_cast<size_t>(sy) * im.ys + sx];
+    }
+    uint8_t* uv = out.data() + static_cast<size_t>(ow) * oh;
+    for (int y = 0; y < oh / 2; ++y) for (int x = 0; x < ow / 2; ++x) {
+        map(x, y, ow / 2, im.w / 2, im.h / 2, &sx, &sy);
+        const size_t off = static_cast<size_t>(sy) * im.uvs + static_cast<size_t>(sx) * im.ps;
+        uv[static_cast<size_t>(y) * ow + 2 * x] = im.u[off];
+        uv[static_cast<size_t>(y) * ow + 2 * x + 1] = im.v[off];
+    }
+}
+
+// Every rotation x mirror x chroma layout, on sizes that are and are not multiples of the
+// 8x8 / 4x4 tiles, with random content so that any misplaced byte is caught.
+static void test_converter_matches_reference_exhaustive() {
+    const int sizes[][2] = {{2, 2}, {8, 4}, {8, 8}, {16, 16}, {18, 10}, {30, 22}, {64, 34}, {96, 54}, {136, 72}, {200, 130}};
+    unsigned seed = 12345;
+    for (const auto& sz : sizes) {
+        for (int layout = 0; layout < 3; ++layout) {
+            Img im = make(sz[0], sz[1], layout == 2 ? 1 : 2, layout == 1);
+            for (auto& b : im.y) { seed = seed * 1103515245u + 12345u; b = static_cast<uint8_t>(seed >> 16); }
+            for (auto& b : im.uv) { seed = seed * 1103515245u + 12345u; b = static_cast<uint8_t>(seed >> 16); }
+            for (int rot : {0, 90, 180, 270}) for (int m = 0; m < 2; ++m) {
+                const Transform t{rot, m == 1};
+                std::vector<uint8_t> want;
+                reference_nv12(im, t, want);
+                int ow, oh; output_size(im.w, im.h, rot, &ow, &oh);
+                std::vector<uint8_t> got(nv12_size(ow, oh), 0xAA);
+                const bool ok = yuv420_to_nv12(planes(im), t, got.data(), ow, oh);
+                if (!ok || got != want) {
+                    std::printf("FAIL converter %dx%d layout %d rot %d mirror %d\n", im.w, im.h, layout, rot, m);
+                    ++failures;
+                }
+            }
+        }
+    }
+}
+
 static void test_tiled_rotation_matches_reference() {
     Img im = make(64, 34, 2);
     std::vector<uint8_t> out(nv12_size(34, 64));
@@ -157,18 +212,19 @@ static void test_tiled_rotation_matches_reference() {
 static void bench() {
     Img im = make(1920, 1080, 2);
     std::vector<uint8_t> out(nv12_size(1920, 1080));
-    for (int rot : {0, 90}) {
+    for (int rot : {0, 90, 180, 270}) for (int m = 0; m < 2; ++m) {
         int ow, oh; output_size(1920, 1080, rot, &ow, &oh);
         auto t0 = std::chrono::steady_clock::now();
-        for (int i = 0; i < 20; ++i) yuv420_to_nv12(planes(im), Transform{rot, false}, out.data(), ow, oh);
+        for (int i = 0; i < 20; ++i) yuv420_to_nv12(planes(im), Transform{rot, m == 1}, out.data(), ow, oh);
         auto ms = std::chrono::duration<double, std::milli>(std::chrono::steady_clock::now() - t0).count() / 20;
-        std::printf("bench 1080p rotation %d: %.2f ms/frame (host)\n", rot, ms);
+        std::printf("bench 1080p rotation %d mirror %d: %.2f ms/frame (host)\n", rot, m, ms);
     }
 }
 
 int main() {
     test_watermark();
     test_tiled_rotation_matches_reference();
+    test_converter_matches_reference_exhaustive();
     bench();
     test_identity(2, false);
     test_identity(2, true);

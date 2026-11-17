@@ -41,7 +41,10 @@ interface NdiRuntime {
 }
 
 interface NdiSender : AutoCloseable {
-    /** Converts the frame to NV12 natively and sends it asynchronously. 0 = success. */
+    /**
+     * Converts the frame to NV12 natively and sends it asynchronously. 0 = sent,
+     * [SKIPPED_NO_RECEIVER] = no receiver connected so nothing was converted, negative = error.
+     */
     fun sendVideo(frame: YuvFrame, rotation: Int, mirror: Boolean, fpsN: Int, fpsD: Int, timecode100ns: Long, watermark: Boolean): Int
     /** Sends interleaved float PCM (converted to planar FLTP natively). 0 = success. */
     fun sendAudio(interleaved: FloatArray, frames: Int, channels: Int, sampleRate: Int, timecode100ns: Long): Int
@@ -49,4 +52,8 @@ interface NdiSender : AutoCloseable {
     fun tally(): Tally
     fun sourceName(): String?
     override fun close()
+
+    companion object {
+        const val SKIPPED_NO_RECEIVER = 1
+    }
 }

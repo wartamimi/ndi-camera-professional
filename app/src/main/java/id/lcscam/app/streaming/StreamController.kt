@@ -40,6 +40,8 @@ import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.isActive
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.sync.Mutex
+import kotlinx.coroutines.sync.withLock
 import kotlinx.coroutines.withContext
 
 /** Starts/stops the Android foreground service; implemented by the service layer. */
@@ -80,6 +82,13 @@ class StreamController(
 
     var serviceControl: ForegroundServiceControl? = null
 
+    /** Supplied by the container (SystemMonitor); used by the lag diagnosis. */
+    var thermalThrottling: () -> Boolean = { false }
+
+    /** Most likely causes of visible lag right now, as user-facing advice (empty = none found). */
+    private val _lagReport = MutableStateFlow<List<String>>(emptyList())
+    val lagReport: StateFlow<List<String>> = _lagReport.asStateFlow()
+
     /** Set when a Free session was stopped by the time limit; cleared on the next start. */
     private val _sessionLimitReached = MutableStateFlow(false)
     val sessionLimitReached: StateFlow<Boolean> = _sessionLimitReached.asStateFlow()
@@ -98,22 +107,41 @@ class StreamController(
     private var deviceOrientation = 0
     private var lastLandscape = 270
     private var lastPortrait = 0
+    @Volatile private var screenOrientation = 0
     private var libraryReady = false
 
+    // Sender lifecycle. Every create/replace/close runs under this mutex, so overlapping network
+    // events, a source-name change and Stop can never leave two senders alive (two senders with
+    // the same name advertise duplicate sources and confuse receivers).
+    private val senderMutex = Mutex()
+    private var recreateJob: Job? = null
+    /** Interface + IPv4 addresses the current sender was created on. */
+    @Volatile private var senderNetworkKey: String? = null
+    /** Set when the LAN went away after the current sender was created. */
+    @Volatile private var networkLostSinceSender = false
+
     val isStreaming: Boolean get() = streaming
+
+    /** NDI audio is sent from its own thread so a network stall never stalls the microphone. */
+    private val audioQueue = AudioSendQueue(
+        onThreadStart = { android.os.Process.setThreadPriority(android.os.Process.THREAD_PRIORITY_URGENT_AUDIO) },
+    ) { data, frames, ch, rate, tc ->
+        val s = sender
+        if (streaming && s != null) {
+            val rc = s.sendAudio(data, frames, ch, rate, tc)
+            if (rc == 0) audioBuffersSent.incrementAndGet() else audioErrors.incrementAndGet()
+        }
+    }
 
     init {
         camera.frameSink = pipeline
         camera.modeFilter = { m -> PlanLimits.modeAllowed(tier.value, m.resolution, m.fps) }
         pipeline.deviceOrientationProvider = {
-            id.lcscam.app.camera.OrientationMath.constrainDeviceOrientation(
-                deviceOrientation, lastLandscape, lastPortrait, settingsRepo.settings.value.outputOrientation)
+            id.lcscam.app.camera.OrientationMath.outputDeviceOrientation(
+                settingsRepo.settings.value.outputOrientation, deviceOrientation, lastLandscape, lastPortrait, screenOrientation)
         }
         audio.sink = AudioSink { buf, frames, ch, rate, startNs ->
-            if (streaming) {
-                val rc = sender?.sendAudio(buf, frames, ch, rate, clock.audioTimecode(startNs)) ?: -1
-                if (rc == 0) audioBuffersSent.incrementAndGet() else audioErrors.incrementAndGet()
-            }
+            if (streaming) audioQueue.offer(buf, frames, ch, rate, clock.audioTimecode(startNs))
         }
         scope.launch { initializeNdi() }
         scope.launch { tier.collect { t -> enforcePlan(t) } }
@@ -123,14 +151,14 @@ class StreamController(
         scope.launch {
             network.interfaceChanges.collect { st ->
                 if (streaming) {
-                    Log.i(TAG, "Network interface changed (${st.interfaceName} ${st.ipv4Addresses}); recreating NDI sender")
-                    addWarning(NetworkWarning.INTERFACE_CHANGED)
-                    recreateSender()
+                    Log.i(TAG, "Network interface changed (${st.interfaceName} ${st.ipv4Addresses})")
+                    scheduleSenderRecreate(force = false)
                 }
             }
         }
         scope.launch {
             network.status.map { it.connected to it.transport }.distinctUntilChanged().collect { (connected, transport) ->
+                if (!connected) networkLostSinceSender = true
                 setWarning(NetworkWarning.DISCONNECTED, !connected && transport != Transport.CELLULAR)
                 setWarning(NetworkWarning.CELLULAR_ONLY, transport == Transport.CELLULAR)
             }
@@ -155,6 +183,7 @@ class StreamController(
         val t = tier.value
         val pro = Feature.PRO_OVERLAYS.availableIn(t)
         analyzer.settings = AnalyzerSettings(o.zebra && pro, o.zebraThresholdCode, o.peaking && pro, o.peakingThreshold, o.peakingColor)
+        updateAnalysisEnabled(s)
         pipeline.mirrorFrontCamera = s.mirrorFrontOutput
         pipeline.watermark = PlanLimits.watermark(t)
         clock.audioOffsetNs = if (Feature.AV_SYNC_OFFSET.availableIn(t)) s.avOffsetMs * 1_000_000L else 0L
@@ -172,10 +201,26 @@ class StreamController(
         }
     }
 
+    /**
+     * Zebra/peaking/histogram are only drawn on the camera screen, and only on plans with pro
+     * overlays. Outside that the analysis pass (every 3rd-6th frame on the video thread) is
+     * pure waste, e.g. while streaming in the background or on the Free plan.
+     */
+    private fun updateAnalysisEnabled(s: AppSettings = settingsRepo.settings.value) {
+        val o = s.overlays
+        val shown = Feature.PRO_OVERLAYS.availableIn(tier.value) && (o.zebra || o.peaking || o.histogram)
+        pipeline.analysisEnabled = uiVisible && shown
+    }
+
     fun setMuted(muted: Boolean) {
         val c = audio.currentConfig().copy(muted = muted)
         lastAudioConfig = c
         audio.configure(c)
+    }
+
+    /** Display rotation of the interface in degrees (0/90/180/270), used by FOLLOW_SCREEN output. */
+    fun onScreenRotation(displayRotationDeg: Int) {
+        screenOrientation = id.lcscam.app.camera.OrientationMath.screenToDeviceOrientation(displayRotationDeg)
     }
 
     fun onDeviceOrientation(snapped: Int) {
@@ -188,6 +233,7 @@ class StreamController(
     /** Called by the camera screen when it becomes visible or hidden. */
     fun onUiVisibilityChanged(visible: Boolean) {
         uiVisible = visible
+        updateAnalysisEnabled()
         if (visible) {
             ensureCameraOpen()
             if (settingsRepo.settings.value.audioEnabled) audio.start()
@@ -218,7 +264,7 @@ class StreamController(
         }
     }
 
-    /** Free/Basic: the primary rear and primary front camera only. */
+    /** Free: the primary rear and primary front camera only. */
     fun lensAllowed(l: LensDescriptor, t: Tier = tier.value): Boolean {
         if (Feature.ALL_LENSES.availableIn(t)) return true
         if (l.physicalId != null) return false
@@ -234,9 +280,13 @@ class StreamController(
         openCameraFromSettings()
     }
 
+    private var openJob: Job? = null
+
     private fun openCameraFromSettings() {
+        // Coalesce concurrent requests (permission result + camera screen on first launch).
+        if (openJob?.isActive == true) return
         camera.refreshLenses()
-        scope.launch {
+        openJob = scope.launch {
             // Lens enumeration happens on the camera thread; wait briefly for the list.
             var lenses = camera.lenses.value
             var tries = 0
@@ -278,7 +328,10 @@ class StreamController(
             val s = settingsRepo.settings.value
             network.setMulticastLock(true)
             clock.resync()
-            val created = createSenderWithRetry(s)
+            val created = senderMutex.withLock {
+                if (streaming) return@launch
+                createSenderWithRetry(s, maxAttempts = 5)?.also { installSender(it) }
+            }
             if (created == null) {
                 network.setMulticastLock(false)
                 return@launch
@@ -287,10 +340,12 @@ class StreamController(
             pipeline.resetCounters()
             audioBuffersSent.set(0)
             audioErrors.set(0)
+            audioQueue.clear()
+            audioQueue.dropped.set(0)
             restarts = 0
             startedAt = SystemClock.elapsedRealtime()
-            pipeline.sender = created
             streaming = true
+            pipeline.sender = created
             ensureCameraOpen()
             if (s.audioEnabled) audio.start()
             serviceControl?.startStreamingService(created.sourceName() ?: s.sourceName, s.audioEnabled)
@@ -302,14 +357,19 @@ class StreamController(
         if (!streaming && sender == null) return
         streaming = false
         statsJob?.cancel()
+        recreateJob?.cancel()
         scope.launch(ndiDispatcher) {
-            pipeline.sender = null
-            pipeline.drain()
-            sender?.close()
-            sender = null
+            senderMutex.withLock {
+                pipeline.sender = null
+                pipeline.drain()
+                sender?.close()
+                sender = null
+                senderNetworkKey = null
+            }
             network.setMulticastLock(false)
             _ndiStatus.value = NdiStatus.TransmissionStopped
             _stats.value = _stats.value.copy(running = false)
+            _lagReport.value = emptyList()
             serviceControl?.stopStreamingService()
             if (!uiVisible) {
                 camera.close()
@@ -318,59 +378,120 @@ class StreamController(
         }
     }
 
-    private suspend fun createSenderWithRetry(s: AppSettings): NdiSender? {
+    /**
+     * Creates a sender, retrying with backoff. [maxAttempts] null = keep trying until the
+     * coroutine is cancelled (used for recovery while live, so a long Wi-Fi outage does not end
+     * in a permanently dead stream). Caller holds [senderMutex].
+     */
+    private suspend fun createSenderWithRetry(s: AppSettings, maxAttempts: Int?): NdiSender? {
         var attempt = 0
-        while (scope.isActive && attempt < 5) {
+        while (scope.isActive && (if (maxAttempts == null) streaming else attempt < maxAttempts)) {
             val name = if (has(Feature.CUSTOM_SOURCE_NAME)) AppSettings.sanitizeSourceName(s.sourceName) else AppSettings.DEFAULT_SOURCE_NAME
             val groups = if (has(Feature.NDI_GROUPS)) s.ndiGroups.ifBlank { null } else null
             val created = ndi.createSender(SenderConfig(name, groups, s.clockVideo))
             if (created != null) {
-                sender = created
                 _ndiStatus.value = NdiStatus.SenderInitialized(created.sourceName() ?: s.sourceName)
                 return created
             }
             attempt++
-            _ndiStatus.value = NdiStatus.SenderError("NDIlib_send_create failed (attempt $attempt/5)", retrying = attempt < 5)
-            delay(1000L * attempt)
+            val of = maxAttempts?.let { "/$it" } ?: ""
+            _ndiStatus.value = NdiStatus.SenderError("NDIlib_send_create failed (attempt $attempt$of)",
+                retrying = maxAttempts == null || attempt < maxAttempts)
+            delay(SenderRecovery.retryDelayMs(attempt))
         }
         return null
     }
 
-    private fun recreateSender() {
-        scope.launch(ndiDispatcher) {
+    /** Caller holds [senderMutex]. */
+    private fun installSender(created: NdiSender) {
+        sender = created
+        senderNetworkKey = SenderRecovery.networkKey(network.status.value)
+        networkLostSinceSender = false
+    }
+
+    /**
+     * Debounced sender re-creation after a network change. Wi-Fi roaming, DHCP renewals and
+     * Ethernet/Wi-Fi handovers arrive as bursts of callbacks; recreating on every one of them
+     * would disconnect all receivers several times in a row. The decision is taken once the
+     * network has been quiet for [SenderRecovery.NETWORK_SETTLE_MS].
+     */
+    private fun scheduleSenderRecreate(force: Boolean) {
+        recreateJob?.cancel()
+        recreateJob = scope.launch(ndiDispatcher) {
+            if (!force) delay(SenderRecovery.NETWORK_SETTLE_MS)
             if (!streaming) return@launch
-            pipeline.sender = null
-            pipeline.drain()
-            sender?.close()
-            sender = null
-            delay(500) // let the new interface settle before re-advertising via mDNS
-            val created = createSenderWithRetry(settingsRepo.settings.value)
-            if (created != null && streaming) {
+            val st = network.status.value
+            if (!force) {
+                when (SenderRecovery.decide(sender != null, senderNetworkKey, networkLostSinceSender, st)) {
+                    SenderRecovery.Decision.KEEP -> return@launch
+                    SenderRecovery.Decision.WAIT_FOR_NETWORK -> {
+                        // No LAN: a sender created now would bind to nothing. Keep the current one
+                        // (the DISCONNECTED warning is shown); the next interface change, i.e. the
+                        // network coming back, schedules this decision again.
+                        Log.i(TAG, "No LAN after network change; waiting before recreating the sender")
+                        return@launch
+                    }
+                    SenderRecovery.Decision.RECREATE -> Unit
+                }
+                Log.i(TAG, "Recreating NDI sender on ${st.interfaceName} ${st.ipv4Addresses}")
+                addWarning(NetworkWarning.INTERFACE_CHANGED)
+            }
+            senderMutex.withLock {
+                if (!streaming) return@withLock
+                pipeline.sender = null
+                pipeline.drain()
+                sender?.close()
+                sender = null
+                val created = createSenderWithRetry(settingsRepo.settings.value, maxAttempts = null) ?: return@withLock
+                if (!streaming) {
+                    // Stop was pressed while we were creating: never leave an orphan sender behind.
+                    created.close()
+                    return@withLock
+                }
+                installSender(created)
                 restarts++
                 pipeline.sender = created
-            } else if (created == null) {
-                _ndiStatus.value = NdiStatus.SenderError("Could not recreate NDI sender after network change", retrying = false)
             }
         }
     }
 
     /** Restarts the sender, e.g. after the user changed the source name while live. */
-    fun restartSender() = recreateSender()
+    fun restartSender() = scheduleSenderRecreate(force = true)
 
     private fun startStatsLoop() {
         statsJob?.cancel()
         statsJob = scope.launch(ndiDispatcher) {
             var lastFrames = 0L
+            var lastCameraFrames = 0L
+            var lastCameraProgressMs = SystemClock.elapsedRealtime()
+            var lastCameraRestartMs = 0L
             var lastT = SystemClock.elapsedRealtime()
             var lastDropped = 0L
+            var lastPipelineDropped = 0L
+            var lastReceived = pipeline.framesReceived.get()
             var unstableSeconds = 0
             while (isActive && streaming) {
                 delay(1000)
                 val s = sender ?: continue
                 val now = SystemClock.elapsedRealtime()
                 val frames = pipeline.framesSent.get()
-                val fps = (frames - lastFrames) * 1000f / (now - lastT).coerceAtLeast(1)
-                lastFrames = frames; lastT = now
+                // Pipeline rate (sent + skipped while no receiver is connected): this is the
+                // camera's delivered frame rate, so it stays meaningful before anyone connects.
+                val flowing = frames + pipeline.framesIdle.get()
+                val fps = (flowing - lastFrames) * 1000f / (now - lastT).coerceAtLeast(1)
+                lastFrames = flowing; lastT = now
+                // Camera watchdog: some HALs stall silently (no error callback, no frames).
+                val cameraFrames = pipeline.framesReceived.get()
+                val camState = camera.state.value
+                if (cameraFrames != lastCameraFrames || camState !is CameraState.Running) {
+                    lastCameraFrames = cameraFrames
+                    lastCameraProgressMs = now
+                } else if (now - lastCameraProgressMs >= CAMERA_STALL_MS && now - lastCameraRestartMs >= CAMERA_RESTART_MIN_INTERVAL_MS) {
+                    Log.w(TAG, "No camera frames for ${now - lastCameraProgressMs} ms while Running; reopening camera")
+                    lastCameraRestartMs = now
+                    lastCameraProgressMs = now
+                    camera.capabilities.value?.lens?.let { camera.open(it, (camState as? CameraState.Running)?.mode) }
+                }
                 val connections = s.connections()
                 val tally = if (has(Feature.TALLY)) s.tally() else id.lcscam.app.domain.ndi.Tally(false, false)
                 PlanLimits.sessionLimitMs(tier.value)?.let { limit ->
@@ -390,7 +511,9 @@ class StreamController(
                     running = true,
                     startedAtElapsedMs = startedAt,
                     videoFramesSent = frames,
+                    framesSkippedNoReceiver = pipeline.framesIdle.get(),
                     audioBuffersSent = audioBuffersSent.get(),
+                    audioBuffersDropped = audioQueue.dropped.get(),
                     framesDroppedPipeline = pipeline.framesDroppedPipeline.get(),
                     framesDroppedCamera = pipeline.framesDroppedCamera.get(),
                     currentFps = fps,
@@ -400,6 +523,26 @@ class StreamController(
                     txBitsPerSecond = network.txBitsPerSecond.value,
                 )
                 val st = network.status.value
+                val runningMode = (camera.state.value as? CameraState.Running)?.mode
+                val received = pipeline.framesReceived.get()
+                val pipelineDropped = pipeline.framesDroppedPipeline.get()
+                val input = LagDiagnosis.Input(
+                    targetFps = runningMode?.fps ?: 0,
+                    cameraFps = received - lastReceived.toFloat(),
+                    pipelineDropsPerSec = pipelineDropped - lastPipelineDropped,
+                    convertMs = pipeline.lastConvertMs,
+                    pixels = runningMode?.resolution?.pixels ?: 0L,
+                    thermalThrottling = thermalThrottling(),
+                    onWifi = st.transport == Transport.WIFI,
+                    wifiRssiDbm = st.wifiRssiDbm,
+                    wifiLinkMbps = st.wifiTxLinkSpeedMbps ?: st.wifiLinkSpeedMbps,
+                    wifiFrequencyMhz = st.wifiFrequencyMhz,
+                    txBitsPerSecond = network.txBitsPerSecond.value,
+                    receivers = connections.coerceAtLeast(0),
+                )
+                lastReceived = received
+                lastPipelineDropped = pipelineDropped
+                _lagReport.value = LagDiagnosis.diagnose(input).map { LagDiagnosis.message(it, input) }
                 setWarning(NetworkWarning.WEAK_WIFI, st.transport == Transport.WIFI && (st.wifiRssiDbm ?: 0) < -72)
                 val res = camera.state.value.let { (it as? CameraState.Running)?.mode?.resolution }
                 val needMbps = if (res != null && res.pixels >= 3840L * 2160) 250 else if (res != null && res.pixels >= 1920L * 1080) 130 else 60
@@ -436,5 +579,9 @@ class StreamController(
         scope.launch { delay(8000); setWarning(w, false) }
     }
 
-    private companion object { const val TAG = "StreamController" }
+    private companion object {
+        const val TAG = "StreamController"
+        const val CAMERA_STALL_MS = 5_000L
+        const val CAMERA_RESTART_MIN_INTERVAL_MS = 15_000L
+    }
 }

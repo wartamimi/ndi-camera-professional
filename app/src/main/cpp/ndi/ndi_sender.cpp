@@ -42,6 +42,16 @@ NdiSender::~NdiSender() {
 int NdiSender::send_video(const Yuv420Planes& src, const Transform& t, int fps_n, int fps_d, int64_t timecode, const char* watermark) {
     std::lock_guard<std::mutex> lock(video_mtx_);
     if (!inst_) return -1;
+    // The NDI SDK documentation recommends skipping rendering when nobody is connected
+    // (NDIlib_send_get_no_connections). With no receiver there is nothing to deliver, so the
+    // colour conversion and SpeedHQ compression are skipped entirely: the camera keeps running
+    // and the source stays advertised, but the phone does not burn CPU for an empty network.
+    const auto now = std::chrono::steady_clock::now();
+    if (now >= next_connection_check_) {
+        has_receivers_ = NDIlib_send_get_no_connections(inst_, 0) > 0;
+        next_connection_check_ = now + kConnectionPollInterval;
+    }
+    if (!has_receivers_) return 1;
     int ow, oh;
     output_size(src.width, src.height, t.rotation, &ow, &oh);
     if (ow != cur_w_ || oh != cur_h_) {

@@ -1,5 +1,6 @@
 package id.lcscam.app.billing
 
+import id.lcscam.app.i18n.tr
 import android.app.Activity
 import android.content.Context
 import android.util.Log
@@ -37,8 +38,8 @@ sealed interface BillingStatus {
 }
 
 /**
- * Google Play Billing (Play Billing Library 8). Subscriptions: ndicam_basic / ndicam_pro /
- * ndicam_ultra; one-time product: ndicam_max_lifetime. The current tier is the highest owned,
+ * Google Play Billing (Play Billing Library 8). Subscription: ndicam_pro; one-time product:
+ * ndicam_max_lifetime. The current tier is the highest owned,
  * purchased (not pending) product. The last known tier is cached so the app starts in the right
  * tier offline; it is re-validated with Google Play on every start and on resume.
  */
@@ -199,7 +200,7 @@ class BillingRepository(context: Context) : PurchasesUpdatedListener {
     }
 
     fun launchPurchase(activity: Activity, offer: PlanOffer): Boolean {
-        if (!client.isReady) { _message.value = "Google Play Billing is not available"; return false }
+        if (!client.isReady) { _message.value = tr("Google Play Billing is not available", "Google Play Billing tidak tersedia"); return false }
         val p = BillingFlowParams.ProductDetailsParams.newBuilder().setProductDetails(offer.details)
         offer.offerToken?.let { p.setOfferToken(it) }
         val r = client.launchBillingFlow(activity, BillingFlowParams.newBuilder().setProductDetailsParamsList(listOf(p.build())).build())
@@ -211,7 +212,7 @@ class BillingRepository(context: Context) : PurchasesUpdatedListener {
         when (result.responseCode) {
             BillingClient.BillingResponseCode.OK -> {
                 purchases?.filter { it.purchaseState == Purchase.PurchaseState.PENDING }?.takeIf { it.isNotEmpty() }?.let {
-                    _message.value = "Payment pending. Your plan activates when Google Play confirms it."
+                    _message.value = tr("Payment pending. Your plan activates when Google Play confirms it.", "Pembayaran tertunda. Paket aktif setelah Google Play mengonfirmasi.")
                 }
                 queryOwned()
             }
