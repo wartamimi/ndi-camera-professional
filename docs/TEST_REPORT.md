@@ -68,7 +68,7 @@ None of these may be reported as passed until performed on hardware.
 
 | Item | Implemented | Compiled (CI) | Unit-tested | Device-tested |
 |---|---|---|---|---|
-| Plans Free/Basic/Pro/Ultra/Max, feature gating | ✓ | ✓ | ✓ (PlansTest) | – |
+| Plans Free/Pro/Max, feature gating | ✓ | ✓ | ✓ (PlansTest) | – |
 | Google Play Billing 8 (subscriptions, lifetime, restore) | ✓ | ✓ | – | – (needs a Play test track) |
 | Free watermark burned into NDI output | ✓ | ✓ | ✓ (native host test) | – |
 | Free 15-minute session limit + dialog | ✓ | ✓ | – | – |

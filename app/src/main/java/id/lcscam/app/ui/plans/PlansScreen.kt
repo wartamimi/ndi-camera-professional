@@ -61,10 +61,9 @@ private fun freeLimits() = listOf(
 )
 
 private fun tierTagline(t: Tier) = when (t) {
-    Tier.BASIC -> tr("For everyday streaming without a time limit", "Untuk streaming harian tanpa batas waktu")
-    Tier.PRO -> tr("Full manual camera control and cinematic tools", "Kontrol kamera manual penuh dan alat bantu sinematik")
-    Tier.ULTRA -> tr("4K, tally and advanced NDI features for production", "4K, tally dan fitur NDI lanjutan untuk produksi")
-    Tier.MAX -> tr("Every Ultra feature, pay once, keep forever", "Semua fitur Ultra, sekali bayar selamanya")
+    Tier.PRO -> tr("Everything for production up to 1080p60: no time limit, no watermark, full manual control",
+        "Semua untuk produksi hingga 1080p60: tanpa batas waktu, tanpa watermark, kontrol manual penuh")
+    Tier.MAX -> tr("Every Pro feature plus 4K, pay once, keep forever", "Semua fitur Pro plus 4K, sekali bayar selamanya")
     Tier.FREE -> tr("Try all the NDI basics", "Coba semua dasar NDI")
 }
 
@@ -98,10 +97,10 @@ fun PlansScreen(c: AppContainer, onBack: () -> Unit) = SettingsPage(tr("Plans & 
         PlanCard(title = t.label.uppercase(), tagline = tierTagline(t), current = tier == t) {
             val newHere = Feature.entries.filter { it.minTier == t }
             if (t == Tier.MAX) {
-                Text(tr("• Every Ultra feature", "• Semua fitur Ultra"), color = Cine.Text, fontSize = 12.sp)
+                Text(tr("• Every Pro feature", "• Semua fitur Pro"), color = Cine.Text, fontSize = 12.sp)
+                newHere.forEach { Text("• ${it.title}", color = Cine.Text, fontSize = 12.sp) }
                 Text(tr("• No subscription: pay once, valid forever", "• Tanpa langganan: bayar sekali, berlaku selamanya"), color = Cine.Text, fontSize = 12.sp)
             } else {
-                if (t != Tier.BASIC) Text(tr("• Every ${Tier.entries[t.ordinal - 1].label} feature", "• Semua fitur ${Tier.entries[t.ordinal - 1].label}"), color = Cine.Text, fontSize = 12.sp)
                 newHere.forEach { Text("• ${it.title}", color = Cine.Text, fontSize = 12.sp) }
             }
             if (tierOffers.isEmpty()) {

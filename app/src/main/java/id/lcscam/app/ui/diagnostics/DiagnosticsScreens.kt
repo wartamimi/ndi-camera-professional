@@ -10,6 +10,9 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.unit.sp
+import androidx.compose.ui.Modifier
+import androidx.compose.foundation.layout.padding
+import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import id.lcscam.app.di.AppContainer
 import id.lcscam.app.domain.model.CameraState
@@ -99,6 +102,12 @@ fun PerformanceDiagnosticsScreen(c: AppContainer, onBack: () -> Unit) = Settings
     KeyValue(tr("Dropped: NDI thread busy", "Terbuang: thread NDI sibuk"), stats.framesDroppedPipeline.toString(), warn = stats.framesDroppedPipeline > 0)
     KeyValue(tr("Dropped: camera gaps", "Terbuang: jeda kamera"), stats.framesDroppedCamera.toString(), warn = stats.framesDroppedCamera > 0)
     KeyValue("YUV→NV12 + send", String.format(Locale.US, "%.2f ms", stats.lastConvertMs))
+    val lag by c.streamController.lagReport.collectAsStateWithLifecycle()
+    SectionTitle(tr("Lag diagnosis", "Diagnosis lag"))
+    if (!stats.running) Text(tr("Start streaming to analyse.", "Mulai siaran untuk menganalisis."), color = Cine.Dim, fontSize = 12.sp)
+    else if (lag.isEmpty()) Text(tr("No cause found on the phone side. If the receiver still stutters, check the receiver PC (wired network, NDI latency mode) and the router.",
+        "Tidak ada penyebab di sisi HP. Jika receiver masih tersendat, cek PC receiver (jaringan kabel, mode latensi NDI) dan router."), color = Cine.Dim, fontSize = 12.sp)
+    lag.forEach { Text("• $it", color = Cine.Warn, fontSize = 12.sp, modifier = Modifier.padding(top = 2.dp)) }
     SectionTitle(tr("Device health", "Kesehatan perangkat"))
     KeyValue(tr("Thermal", "Suhu"), h.thermalLabel + (h.thermalHeadroom?.let { String.format(Locale.US, " · headroom %.2f", it) } ?: ""), warn = h.throttling)
     KeyValue(tr("Battery", "Baterai"), "${h.batteryPercent ?: "--"}% ${if (h.charging) tr("(charging)", "(mengisi)") else ""} · ${h.batteryTempC ?: "--"} °C")
@@ -123,5 +132,34 @@ fun PerformanceDiagnosticsScreen(c: AppContainer, onBack: () -> Unit) = Settings
         KeyValue("Torch", cp.flashAvailable.toString())
         KeyValue("AF / AE regions", "${cp.maxAfRegions} / ${cp.maxAeRegions}")
         KeyValue("Modes", cp.modes.joinToString { it.label })
+        cp.frameRateReport?.let { FrameRateSection(it) }
+    }
+}
+
+/** Explains, from the camera's own data, which frame rates are reachable and why 60 may not be. */
+@Composable
+private fun FrameRateSection(r: id.lcscam.app.domain.model.FrameRateReport) {
+    SectionTitle(tr("Frame rates (from the camera)", "Frame rate (dari kamera)"))
+    KeyValue("AE fps ranges", r.aeFpsRanges.joinToString { "${it.first}–${it.second}" }.ifEmpty { "--" })
+    fun fmt(m: Map<id.lcscam.app.domain.model.Resolution, Int>) =
+        m.entries.joinToString { "${it.key.height}p:${if (it.value == 0) "?" else it.value.toString()}" }.ifEmpty { "--" }
+    KeyValue(tr("YUV max fps (used for NDI)", "YUV fps maks (dipakai NDI)"), fmt(r.yuvMaxFps))
+    KeyValue(tr("Video-encoder path max fps", "Fps maks jalur encoder video"), fmt(r.privateMaxFps))
+    KeyValue(tr("High-speed (slow-mo) ranges", "Rentang high-speed (slow-mo)"), r.highSpeedFps.joinToString { "${it.first}–${it.second}" }.ifEmpty { "--" })
+    for (res in listOf(id.lcscam.app.domain.model.Resolution(1920, 1080), id.lcscam.app.domain.model.Resolution(1280, 720))) {
+        val why = id.lcscam.app.camera.ModeSelection.whyNot(60, res, r)
+        val text = when (why) {
+            id.lcscam.app.camera.ModeSelection.FpsBlocker.NONE -> tr("available", "tersedia")
+            id.lcscam.app.camera.ModeSelection.FpsBlocker.NO_SIZE -> tr("this size is not offered for YUV", "ukuran ini tidak ditawarkan untuk YUV")
+            id.lcscam.app.camera.ModeSelection.FpsBlocker.NO_AE_RANGE -> tr(
+                "the camera does not allow 60 fps for third-party apps (no AE range reaches 60)",
+                "kamera tidak mengizinkan 60 fps untuk aplikasi pihak ketiga (tidak ada rentang AE sampai 60)")
+            id.lcscam.app.camera.ModeSelection.FpsBlocker.YUV_TOO_SLOW -> tr(
+                "the YUV stream is limited to ${r.yuvMaxFps[res]} fps at this size" +
+                    ((r.privateMaxFps[res] ?: 0).takeIf { it >= 60 }?.let { " (the video encoder path can do $it)" } ?: ""),
+                "stream YUV dibatasi ${r.yuvMaxFps[res]} fps di ukuran ini" +
+                    ((r.privateMaxFps[res] ?: 0).takeIf { it >= 60 }?.let { " (jalur encoder video bisa $it)" } ?: ""))
+        }
+        KeyValue("60 fps @ ${res.height}p", text, warn = why != id.lcscam.app.camera.ModeSelection.FpsBlocker.NONE)
     }
 }

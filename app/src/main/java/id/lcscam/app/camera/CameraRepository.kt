@@ -11,6 +11,7 @@ import id.lcscam.app.domain.model.AntibandingMode
 import id.lcscam.app.domain.model.AwbPreset
 import id.lcscam.app.domain.model.CameraCapabilities
 import id.lcscam.app.domain.model.FloatRangeCap
+import id.lcscam.app.domain.model.FrameRateReport
 import id.lcscam.app.domain.model.IntRangeCap
 import id.lcscam.app.domain.model.LensDescriptor
 import id.lcscam.app.domain.model.LensFacing
@@ -55,10 +56,25 @@ class CameraRepository(private val cameraManager: CameraManager) {
         val yuvSizes = map?.getOutputSizes(ImageFormat.YUV_420_888)?.map { Resolution(it.width, it.height) } ?: emptyList()
         val fpsRanges = chars.get(CameraCharacteristics.CONTROL_AE_AVAILABLE_TARGET_FPS_RANGES)
             ?.map { it.lower to it.upper } ?: emptyList()
-        val modes = ModeSelection.supportedModes(yuvSizes, { res ->
+        val yuvMinDuration: (Resolution) -> Long = { res ->
             try { map?.getOutputMinFrameDuration(ImageFormat.YUV_420_888, android.util.Size(res.width, res.height)) ?: 0L }
             catch (e: IllegalArgumentException) { 0L }
-        }, fpsRanges)
+        }
+        val modes = ModeSelection.supportedModes(yuvSizes, yuvMinDuration, fpsRanges)
+        val privateSizes = map?.getOutputSizes(ImageFormat.PRIVATE)?.map { Resolution(it.width, it.height) } ?: emptyList()
+        val report = FrameRateReport(
+            aeFpsRanges = fpsRanges,
+            yuvMaxFps = Resolution.CANDIDATES.filter { it in yuvSizes }.associateWith { r ->
+                ModeSelection.maxFps(yuvMinDuration(r))
+            },
+            privateMaxFps = Resolution.CANDIDATES.filter { it in privateSizes }.associateWith { r ->
+                ModeSelection.maxFps(
+                    try { map?.getOutputMinFrameDuration(ImageFormat.PRIVATE, android.util.Size(r.width, r.height)) ?: 0L }
+                    catch (e: IllegalArgumentException) { 0L })
+            },
+            highSpeedFps = try { map?.highSpeedVideoFpsRanges?.map { it.lower to it.upper }?.distinct() ?: emptyList() }
+                catch (e: Exception) { emptyList() },
+        )
 
         val caps = chars.get(CameraCharacteristics.REQUEST_AVAILABLE_CAPABILITIES) ?: IntArray(0)
         val manualSensor = CameraMetadata.REQUEST_AVAILABLE_CAPABILITIES_MANUAL_SENSOR in caps
@@ -121,6 +137,7 @@ class CameraRepository(private val cameraManager: CameraManager) {
             antibandingModes = antibanding,
             maxAfRegions = chars.get(CameraCharacteristics.CONTROL_MAX_REGIONS_AF) ?: 0,
             maxAeRegions = chars.get(CameraCharacteristics.CONTROL_MAX_REGIONS_AE) ?: 0,
+            frameRateReport = report,
         )
     }
 

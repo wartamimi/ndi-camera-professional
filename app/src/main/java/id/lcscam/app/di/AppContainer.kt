@@ -41,5 +41,8 @@ class AppContainer(context: Context) {
     val billing = BillingRepository(appContext)
     val streamController = StreamController(
         ndiRuntime, cameraEngine, audioEngine, networkMonitor, settings, analyzer, appScope, ndiDispatcher, billing.tier,
-    ).also { it.serviceControl = StreamingService.controller(appContext) }
+    ).also {
+        it.serviceControl = StreamingService.controller(appContext)
+        it.thermalThrottling = { systemMonitor.health.value.throttling }
+    }
 }

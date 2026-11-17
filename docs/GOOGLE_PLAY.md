@@ -9,27 +9,25 @@ Play Console.
 | Plan | Product ID (type) | Suggested price (IDR) | Suggested price (USD) |
 |---|---|---|---|
 | Free | – | Free | Free |
-| Basic | `ndicam_basic` (subscription) | Rp29.000 / month, Rp249.000 / year | $1.99 / $16.99 |
-| Pro | `ndicam_pro` (subscription) | Rp69.000 / month, Rp599.000 / year | $4.49 / $39.99 |
-| Ultra | `ndicam_ultra` (subscription) | Rp119.000 / month, Rp999.000 / year | $7.99 / $69.99 |
+| Pro | `ndicam_pro` (subscription, monthly + yearly base plans) | Rp69.000 / month, Rp599.000 / year | $4.49 / $39.99 |
 | Max | `ndicam_max_lifetime` (one-time product) | Rp1.499.000 one time | $99.99 |
 
 Each plan includes everything in the plan below it. The rules are defined in
-`app/src/main/java/id/lcscam/app/billing/Plans.kt`.
+`app/src/main/java/id/lcscam/app/billing/Plans.kt`. (The earlier `ndicam_basic` and
+`ndicam_ultra` IDs are no longer offered; if a tester still owns one it maps to Pro.)
 
-| Feature | Free | Basic | Pro | Ultra / Max |
-|---|---|---|---|---|
-| Maximum resolution / frame rate | 720p30 | 1080p30 | 1080p60 | 4K60 (if the camera supports it) |
-| Session length | 15 minutes | Unlimited | Unlimited | Unlimited |
-| Watermark on the NDI output | Yes | No | No | No |
-| Manual ISO / shutter / EV / AE lock | – | ✓ | ✓ | ✓ |
-| Manual focus, focus lock, manual WB (Kelvin/tint) | – | – | ✓ | ✓ |
-| Zebra, peaking, histogram, safe areas | – | – | ✓ | ✓ |
-| Audio | Mono, internal mic | Stereo | + USB / external | + A/V offset |
-| Custom NDI source name | – | ✓ | ✓ | ✓ |
-| Background / screen-off streaming | – | ✓ | ✓ | ✓ |
-| All lenses (ultra-wide, tele, physical) | Main front/rear only | Main only | ✓ | ✓ |
-| NDI groups, tally | – | – | – | ✓ |
+| Feature | Free | Pro | Max |
+|---|---|---|---|
+| Maximum resolution / frame rate | 720p30 | 1080p60 | 4K60 (if the camera supports it) |
+| Session length | 15 minutes | Unlimited | Unlimited |
+| Watermark on the NDI output | Yes | No | No |
+| Manual ISO / shutter / EV / AE lock, manual focus, manual WB | – | ✓ | ✓ |
+| Zebra, peaking, histogram, safe areas | – | ✓ | ✓ |
+| Audio | Mono, internal mic | Stereo, USB / external, A/V offset | ✓ |
+| Custom NDI source name, NDI groups, tally | – | ✓ | ✓ |
+| Background / screen-off streaming | – | ✓ | ✓ |
+| All lenses (ultra-wide, tele, physical) | Main front/rear only | ✓ | ✓ |
+| Payment | – | Subscription | Pay once, keep forever |
 
 ## 2. Play Console setup
 
@@ -39,7 +37,7 @@ Each plan includes everything in the plan below it. The rules are defined in
    - CI then builds `LCSCam-NDI-release-play.aab`.
    - Its versionCode is the GitHub Actions run number.
    - Use **Play App Signing**.
-3. **Monetize › Products › Subscriptions.** Create `ndicam_basic`, `ndicam_pro` and `ndicam_ultra`.
+3. **Monetize › Products › Subscriptions.** Create `ndicam_pro`.
    - Give each one two auto-renewing base plans: `monthly` (P1M) and `yearly` (P1Y).
    - The app shows every active base plan. A free-trial offer is optional and is shown automatically.
 4. **Monetize › Products › In-app products.** Create `ndicam_max_lifetime` as a one-time, non-consumable product.

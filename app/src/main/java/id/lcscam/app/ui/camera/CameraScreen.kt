@@ -147,9 +147,9 @@ fun CameraScreen(vm: CameraViewModel, onOpenSettings: () -> Unit, onOpenPlans: (
             title = { Text(tr("Free session limit reached", "Batas sesi gratis tercapai"), color = Cine.Text) },
             text = {
                 Text(tr("The Free version stops the stream after ${PlanLimits.FREE_SESSION_MS / 60_000} minutes. " +
-                    "Start again, or upgrade to Basic or higher for unlimited streaming without a watermark.",
+                    "Start again, or upgrade to Pro or Max for unlimited streaming without a watermark.",
                     "Versi Free menghentikan stream setelah ${PlanLimits.FREE_SESSION_MS / 60_000} menit. " +
-                    "Mulai lagi, atau upgrade ke Basic atau lebih tinggi untuk streaming tanpa batas waktu dan tanpa watermark."),
+                    "Mulai lagi, atau upgrade ke Pro atau Max untuk streaming tanpa batas waktu dan tanpa watermark."),
                     color = Cine.Dim)
             },
             confirmButton = { TextButton(onClick = { vm.dismissSessionLimit(); onOpenPlans() }) { Text(tr("SEE PLANS", "LIHAT PAKET"), color = Cine.Accent) } },
@@ -266,7 +266,8 @@ private fun NdiStrip(vm: CameraViewModel, onOpenPlans: () -> Unit) {
                 valueColor = if (stats.totalDropped > 0) Cine.Warn else Cine.Text)
             InfoCell("TX", String.format(Locale.US, "%.0fM", stats.txBitsPerSecond / 1e6), Modifier.weight(1f))
         }
-        warnings.firstOrNull()?.let { w -> Text("⚠ ${w.message}", color = Cine.Warn, fontSize = 10.sp, maxLines = 2) }
+        val lag by vm.lagReport.collectAsStateWithLifecycle()
+        (warnings.firstOrNull()?.message ?: lag.firstOrNull())?.let { m -> Text("⚠ $m", color = Cine.Warn, fontSize = 10.sp, maxLines = 2) }
     }
 }
 
@@ -515,6 +516,9 @@ private fun NdiPanel(vm: CameraViewModel, onOpenPlans: () -> Unit) {
             }
             InfoCell("CONVERT", String.format(Locale.US, "%.1f ms", stats.lastConvertMs))
             warnings.forEach { w -> Text("⚠ ${w.message}", color = Cine.Warn, fontSize = 10.sp, modifier = Modifier.padding(top = 4.dp)) }
+            val lag by vm.lagReport.collectAsStateWithLifecycle()
+            if (lag.isNotEmpty()) Text(tr("Possible lag causes", "Kemungkinan penyebab lag"), style = Cine.label.copy(color = Cine.Accent), modifier = Modifier.padding(top = 6.dp))
+            lag.forEach { m -> Text("• $m", color = Cine.Warn, fontSize = 10.sp, modifier = Modifier.padding(top = 2.dp)) }
         }
         // Audio meter + mute
         Column(Modifier.width(34.dp).fillMaxHeight().padding(vertical = 8.dp, horizontal = 4.dp),
@@ -696,7 +700,7 @@ private fun ControlPanel(
             Panel.EV -> {
                 val r = caps.exposureCompensationRange
                 if (r != null) {
-                    if (noExp) LockedNote(tr("EV compensation and AE lock need the Basic plan or higher.", "Kompensasi EV dan kunci AE butuh paket Basic atau lebih tinggi."), onOpenPlans)
+                    if (noExp) LockedNote(tr("EV compensation and AE lock need the Pro plan or higher.", "Kompensasi EV dan kunci AE butuh paket Pro atau lebih tinggi."), onOpenPlans)
                     LabeledSlider(String.format(Locale.US, "EV %+.1f", c.exposureCompensation * caps.exposureCompensationStep),
                         c.exposureCompensation.toFloat(), r.lower.toFloat()..r.upper.toFloat(), enabled = c.autoExposure && !noExp,
                         steps = (r.upper - r.lower - 1).coerceAtLeast(0)) { vm.setEv(Math.round(it)) }

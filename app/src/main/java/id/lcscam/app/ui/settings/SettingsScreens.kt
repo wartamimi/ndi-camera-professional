@@ -81,8 +81,8 @@ fun SettingsHome(c: AppContainer, onBack: () -> Unit, navigate: (String) -> Unit
         "Antarmuka, IP, link, laju kirim, peringatan")) { navigate("network") }
     NavRow(tr("Performance diagnostics", "Diagnostik performa"), tr("Frame delivery, drops, thermal, memory, capabilities",
         "Pengiriman frame, drop, suhu, memori, kemampuan")) { navigate("diagnostics") }
-    NavRow(tr("Plans & Pricing", "Paket & Harga"), tr("Free, Basic, Pro, Ultra, Max · restore purchases",
-        "Free, Basic, Pro, Ultra, Max · pulihkan pembelian")) { navigate("plans") }
+    NavRow(tr("Plans & Pricing", "Paket & Harga"), tr("Free, Pro, Max · restore purchases",
+        "Free, Pro, Max · pulihkan pembelian")) { navigate("plans") }
     NavRow(tr("About", "Tentang"), tr("Version, NDI® SDK, licences, developer", "Versi, NDI® SDK, lisensi, pengembang")) { navigate("about") }
 }
 

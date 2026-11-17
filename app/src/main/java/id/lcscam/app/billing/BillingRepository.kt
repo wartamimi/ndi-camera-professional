@@ -38,8 +38,8 @@ sealed interface BillingStatus {
 }
 
 /**
- * Google Play Billing (Play Billing Library 8). Subscriptions: ndicam_basic / ndicam_pro /
- * ndicam_ultra; one-time product: ndicam_max_lifetime. The current tier is the highest owned,
+ * Google Play Billing (Play Billing Library 8). Subscription: ndicam_pro; one-time product:
+ * ndicam_max_lifetime. The current tier is the highest owned,
  * purchased (not pending) product. The last known tier is cached so the app starts in the right
  * tier offline; it is re-validated with Google Play on every start and on resume.
  */

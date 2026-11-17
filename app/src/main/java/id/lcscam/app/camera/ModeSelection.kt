@@ -31,6 +31,23 @@ object ModeSelection {
         return modes
     }
 
+    /** Highest whole fps a minimum frame duration allows (0 = unknown / no limit reported). */
+    fun maxFps(minFrameDurationNs: Long): Int =
+        if (minFrameDurationNs <= 0L) 0 else ((1_000_000_000L + minFrameDurationNs / 100) / minFrameDurationNs).toInt()
+
+    enum class FpsBlocker { NONE, NO_AE_RANGE, YUV_TOO_SLOW, NO_SIZE }
+
+    /**
+     * Why [fps] is (not) offered at [res]: the AE target ranges never reach it, the YUV stream
+     * is too slow at that size, or the size is not offered for YUV at all.
+     */
+    fun whyNot(fps: Int, res: Resolution, report: id.lcscam.app.domain.model.FrameRateReport): FpsBlocker {
+        val yuv = report.yuvMaxFps[res] ?: return FpsBlocker.NO_SIZE
+        if (fpsRangeFor(fps, report.aeFpsRanges) == null) return FpsBlocker.NO_AE_RANGE
+        if (yuv in 1 until fps) return FpsBlocker.YUV_TOO_SLOW
+        return FpsBlocker.NONE
+    }
+
     /** Prefers a fixed [fps, fps] range; otherwise a range whose upper bound is fps. */
     fun fpsRangeFor(fps: Int, ranges: List<Pair<Int, Int>>): Pair<Int, Int>? =
         ranges.firstOrNull { it.first == fps && it.second == fps }

@@ -82,6 +82,13 @@ class StreamController(
 
     var serviceControl: ForegroundServiceControl? = null
 
+    /** Supplied by the container (SystemMonitor); used by the lag diagnosis. */
+    var thermalThrottling: () -> Boolean = { false }
+
+    /** Most likely causes of visible lag right now, as user-facing advice (empty = none found). */
+    private val _lagReport = MutableStateFlow<List<String>>(emptyList())
+    val lagReport: StateFlow<List<String>> = _lagReport.asStateFlow()
+
     /** Set when a Free session was stopped by the time limit; cleared on the next start. */
     private val _sessionLimitReached = MutableStateFlow(false)
     val sessionLimitReached: StateFlow<Boolean> = _sessionLimitReached.asStateFlow()
@@ -257,7 +264,7 @@ class StreamController(
         }
     }
 
-    /** Free/Basic: the primary rear and primary front camera only. */
+    /** Free: the primary rear and primary front camera only. */
     fun lensAllowed(l: LensDescriptor, t: Tier = tier.value): Boolean {
         if (Feature.ALL_LENSES.availableIn(t)) return true
         if (l.physicalId != null) return false
@@ -362,6 +369,7 @@ class StreamController(
             network.setMulticastLock(false)
             _ndiStatus.value = NdiStatus.TransmissionStopped
             _stats.value = _stats.value.copy(running = false)
+            _lagReport.value = emptyList()
             serviceControl?.stopStreamingService()
             if (!uiVisible) {
                 camera.close()
@@ -459,6 +467,8 @@ class StreamController(
             var lastCameraRestartMs = 0L
             var lastT = SystemClock.elapsedRealtime()
             var lastDropped = 0L
+            var lastPipelineDropped = 0L
+            var lastReceived = pipeline.framesReceived.get()
             var unstableSeconds = 0
             while (isActive && streaming) {
                 delay(1000)
@@ -513,6 +523,26 @@ class StreamController(
                     txBitsPerSecond = network.txBitsPerSecond.value,
                 )
                 val st = network.status.value
+                val runningMode = (camera.state.value as? CameraState.Running)?.mode
+                val received = pipeline.framesReceived.get()
+                val pipelineDropped = pipeline.framesDroppedPipeline.get()
+                val input = LagDiagnosis.Input(
+                    targetFps = runningMode?.fps ?: 0,
+                    cameraFps = received - lastReceived.toFloat(),
+                    pipelineDropsPerSec = pipelineDropped - lastPipelineDropped,
+                    convertMs = pipeline.lastConvertMs,
+                    pixels = runningMode?.resolution?.pixels ?: 0L,
+                    thermalThrottling = thermalThrottling(),
+                    onWifi = st.transport == Transport.WIFI,
+                    wifiRssiDbm = st.wifiRssiDbm,
+                    wifiLinkMbps = st.wifiTxLinkSpeedMbps ?: st.wifiLinkSpeedMbps,
+                    wifiFrequencyMhz = st.wifiFrequencyMhz,
+                    txBitsPerSecond = network.txBitsPerSecond.value,
+                    receivers = connections.coerceAtLeast(0),
+                )
+                lastReceived = received
+                lastPipelineDropped = pipelineDropped
+                _lagReport.value = LagDiagnosis.diagnose(input).map { LagDiagnosis.message(it, input) }
                 setWarning(NetworkWarning.WEAK_WIFI, st.transport == Transport.WIFI && (st.wifiRssiDbm ?: 0) < -72)
                 val res = camera.state.value.let { (it as? CameraState.Running)?.mode?.resolution }
                 val needMbps = if (res != null && res.pixels >= 3840L * 2160) 250 else if (res != null && res.pixels >= 1920L * 1080) 130 else 60

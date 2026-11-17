@@ -10,7 +10,7 @@ Receivers: OBS Studio (with an NDI plugin), vMix, TriCaster, NDI Studio Monitor,
 |---|---|
 | Package | `id.lcscam.app` |
 | Min / target SDK | Android 10 (API 29) / API 36 (Google Play requirement) |
-| Plans | Free, Basic, Pro, Ultra (subscriptions), Max (lifetime) via Google Play Billing |
+| Plans | Free, Pro (subscription), Max (lifetime) via Google Play Billing |
 | Developer | Munawar Tamimi |
 | ABIs | `arm64-v8a` (primary), `armeabi-v7a` |
 | Stack | Kotlin, Jetpack Compose, Camera2, AudioRecord, C++17, JNI, NDI SDK |

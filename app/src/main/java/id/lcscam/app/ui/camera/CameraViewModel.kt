@@ -25,6 +25,7 @@ class CameraViewModel(val c: AppContainer) : ViewModel() {
     val ndiStatus = c.streamController.ndiStatus
     val stats = c.streamController.stats
     val warnings = c.streamController.warnings
+    val lagReport = c.streamController.lagReport
     val network = c.networkMonitor.status
     val health = c.systemMonitor.health
     val audioLevels = c.audioEngine.levels
