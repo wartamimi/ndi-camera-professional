@@ -57,7 +57,7 @@ Each plan includes everything in the plan below it. The rules are defined in
   - Video and audio are sent only over the local network to the NDI receivers the user chooses.
   - Purchases are handled by Google Play.
   - Answer "No data collected".
-- **Privacy policy URL:** publish `docs/PRIVACY_POLICY.md`, for example with GitHub Pages or any public page.
+- **Privacy policy URL:** https://wartamimi.github.io/ndi-camera-professional/privacy/ (GitHub Pages from `main` /docs; source `docs/privacy/index.html` and `docs/PRIVACY_POLICY.md`). Data safety answers: [DATA_SAFETY.md](DATA_SAFETY.md).
 - **Target audience:** 18+ / professionals. Content rating questionnaire: utility, no user-generated content.
 - **Target API:** the app targets API 36 (Android 16), as Google Play has required for new apps and updates since 31 August 2026.
 - **16 KB page size:** native code is built with `ANDROID_SUPPORT_FLEXIBLE_PAGE_SIZES`. CI checks the LOAD alignment of the 64-bit libraries, including NDI's `libndi.so`, and warns when a library is below 16 KB.

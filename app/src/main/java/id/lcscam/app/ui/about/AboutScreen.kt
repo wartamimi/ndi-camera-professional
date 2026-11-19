@@ -35,6 +35,12 @@ fun AboutScreen(c: AppContainer, onBack: () -> Unit) = SettingsPage("About", onB
     KeyValue("Paket aktif", tier.label)
     Text("© ${java.util.Calendar.getInstance().get(java.util.Calendar.YEAR)} Munawar Tamimi. All rights reserved.",
         color = Cine.Dim, fontSize = 12.sp)
+    SectionTitle("Privasi")
+    Text("Kebijakan Privasi / Privacy Policy", color = Cine.Accent, fontSize = 14.sp,
+        textDecoration = TextDecoration.Underline,
+        modifier = Modifier.padding(vertical = 8.dp).clickable {
+            ctx.startActivity(Intent(Intent.ACTION_VIEW, Uri.parse(PRIVACY_POLICY_URL)))
+        })
     SectionTitle("Build")
     KeyValue("Version", "${BuildConfig.VERSION_NAME} (${BuildConfig.VERSION_CODE})")
     KeyValue("Build type", BuildConfig.BUILD_TYPE + if (BuildConfig.NDI_VALIDATION_BUILD) " · CI validation (no NDI SDK)" else "")
@@ -53,3 +59,5 @@ fun AboutScreen(c: AppContainer, onBack: () -> Unit) = SettingsPage("About", onB
         "Third-party notices for libndi are shipped by NDI in libndi_licenses.txt. " +
         "AndroidX and Kotlin libraries are licensed under the Apache License 2.0.", color = Cine.Dim, fontSize = 12.sp)
 }
+
+const val PRIVACY_POLICY_URL = "https://wartamimi.github.io/ndi-camera-professional/privacy/"
