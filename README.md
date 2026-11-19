@@ -63,3 +63,4 @@ Secrets: `NDI_SDK_URL`, optional `NDI_SDK_SHA256`, and for release signing `SIGN
 - [Google Play publishing, plans & pricing](docs/GOOGLE_PLAY.md)
 - [Privacy policy](docs/PRIVACY_POLICY.md) · web: https://wartamimi.github.io/ndi-camera-professional/privacy/
 - [Google Play Data safety answers](docs/DATA_SAFETY.md)
+- [Terms of service](docs/TERMS_OF_SERVICE.md) · web: https://wartamimi.github.io/ndi-camera-professional/terms/
