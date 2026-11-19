@@ -29,7 +29,7 @@ The `VALIDATION-no-ndi` APK from CI is for compile checks only: it shows "NDI SD
 | FOCUS | AF-C, AF lock, MF slider (dioptres shown as metres). Tap preview = focus point, long-press = focus lock |
 | ISO / SHUTTER | AUTO or manual; selecting a value switches the camera to manual exposure (both ISO and shutter). Shutter angle is shown |
 | WB | Hardware presets, AWB lock, manual Kelvin + tint (approximate) when the camera supports manual post-processing |
-| ZOOM | Optical/digital zoom ratio (API 30+) or crop zoom. **DURATION** chips (Instant, 1 s … 8 s) set how long presets, ZOOM IN and ZOOM OUT take; moves are eased and log-scaled like a servo zoom. STOP holds the current zoom. The slider is always immediate |
+| ZOOM | Optical/digital zoom ratio (API 30+) or crop zoom. **Pinch** the preview with two fingers to zoom in/out directly (the current ratio is shown while pinching; a pinch never triggers tap-to-focus). **DURATION** chips (Instant, 1 s … 8 s) set how long presets, ZOOM IN and ZOOM OUT take; moves are eased and log-scaled like a servo zoom. STOP holds the current zoom. The slider is always immediate |
 | EV | Exposure compensation and AE lock (auto exposure only) |
 | TOOLS | Zebra, focus peaking, thirds, crosshair, safe areas, histogram |
 | STAB | OIS, EIS, anti-banding 50/60 Hz/auto |

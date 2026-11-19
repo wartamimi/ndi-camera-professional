@@ -51,6 +51,10 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.input.pointer.pointerInput
+import androidx.compose.ui.input.pointer.PointerEventPass
+import androidx.compose.foundation.gestures.awaitEachGesture
+import androidx.compose.foundation.gestures.awaitFirstDown
+import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
@@ -388,6 +392,12 @@ private fun PreviewArea(vm: CameraViewModel, caps: CameraCapabilities?) {
     var focusPoint by remember { mutableStateOf<Offset?>(null) }
     var focusAt by remember { mutableLongStateOf(0L) }
     LaunchedEffect(focusAt) { if (focusAt != 0L) { delay(2500); focusPoint = null } }
+    val controls by vm.controls.collectAsStateWithLifecycle()
+    val currentZoom by rememberUpdatedState(controls.zoom)
+    var pinching by remember { mutableStateOf(false) }
+    var pinchEndedAt by remember { mutableLongStateOf(0L) }
+    LaunchedEffect(pinchEndedAt) { if (pinchEndedAt != 0L) { delay(900); pinchEndedAt = 0L } }
+    val canZoom = caps != null && caps.zoomRange.upper > caps.zoomRange.lower
 
     Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
         Box(Modifier.aspectRatio(aspect).background(Color.Black)) {
@@ -411,7 +421,32 @@ private fun PreviewArea(vm: CameraViewModel, caps: CameraCapabilities?) {
             if (settings.overlays.zebra || settings.overlays.peaking) AnalysisMask(overlay, rotation, front)
             val afColor = when (tel.afState) { 2, 4 -> Cine.Ok; 5, 6 -> Cine.Rec; else -> Color.White }
             GuideOverlay(settings.overlays, focusPoint, afColor,
-                Modifier.pointerInput(rotation, front, caps) {
+                Modifier.pointerInput(canZoom) {
+                    // Two-finger pinch = zoom (Camera2 zoom ratio / crop region via the engine).
+                    // Runs in the Initial pass and consumes the events, so a pinch never also
+                    // triggers tap-to-focus underneath.
+                    if (!canZoom) return@pointerInput
+                    awaitEachGesture {
+                        awaitFirstDown(requireUnconsumed = false, pass = PointerEventPass.Initial)
+                        var startZoom = 0f
+                        var startSpan = 0f
+                        while (true) {
+                            val event = awaitPointerEvent(PointerEventPass.Initial)
+                            val pressed = event.changes.filter { it.pressed }
+                            if (pressed.isEmpty()) break
+                            if (pressed.size < 2) { startSpan = 0f; continue }
+                            val span = (pressed[0].position - pressed[1].position).getDistance()
+                            if (startSpan <= 0f) {
+                                // Second finger down (or a finger replaced): restart from the current zoom.
+                                startSpan = span; startZoom = currentZoom; pinching = true
+                            } else if (span > 0f) {
+                                vm.pinchZoom(startZoom, span / startSpan)
+                            }
+                            event.changes.forEach { it.consume() }
+                        }
+                        if (pinching) { pinching = false; pinchEndedAt = SystemClock.elapsedRealtime() }
+                    }
+                }.pointerInput(rotation, front, caps) {
                     detectTapGestures(
                         onTap = { o ->
                             if (caps?.autofocusAvailable == true) {
@@ -429,6 +464,12 @@ private fun PreviewArea(vm: CameraViewModel, caps: CameraCapabilities?) {
                         },
                     )
                 })
+            if (pinching || pinchEndedAt != 0L) {
+                Text(String.format(Locale.US, "%.1fx", controls.zoom), color = Color.White, fontFamily = Cine.Mono,
+                    fontWeight = FontWeight.Bold, fontSize = 16.sp,
+                    modifier = Modifier.align(Alignment.Center).background(Color.Black.copy(alpha = 0.55f), RoundedCornerShape(16.dp))
+                        .padding(horizontal = 14.dp, vertical = 6.dp))
+            }
             if (settings.overlays.histogram) {
                 Histogram(overlay, Modifier.align(Alignment.TopEnd).padding(6.dp).size(width = 128.dp, height = 56.dp))
             }

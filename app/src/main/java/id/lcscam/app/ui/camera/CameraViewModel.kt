@@ -1,5 +1,6 @@
 package id.lcscam.app.ui.camera
 
+import id.lcscam.app.camera.ZoomRamp
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.ViewModelProvider
 import id.lcscam.app.billing.Feature
@@ -75,6 +76,11 @@ class CameraViewModel(val c: AppContainer) : ViewModel() {
     val zoomRamping = c.cameraEngine.zoomRamping
     /** Immediate zoom (slider drag); cancels a running timed move. */
     fun setZoom(z: Float) = c.cameraEngine.rampZoom(z, 0L)
+    /** Pinch on the preview: [startZoom] times the finger spread [scale], applied immediately. */
+    fun pinchZoom(startZoom: Float, scale: Float) {
+        val r = capabilities.value?.zoomRange ?: return
+        setZoom(ZoomRamp.pinch(startZoom, scale, r.lower, r.upper))
+    }
     /** Zoom to [z] over the duration chosen in the zoom panel (1-8 s, or instant). */
     fun zoomTo(z: Float) = c.cameraEngine.rampZoom(z, settings.value.zoomDurationSec * 1000L)
     fun zoomIn() { capabilities.value?.let { zoomTo(it.zoomRange.upper) } }

@@ -23,4 +23,14 @@ object ZoomRamp {
         if (from <= 0f || to <= 0f) return from + (to - from) * e
         return from * (to / from).pow(e)
     }
+
+    /**
+     * Zoom ratio for a pinch: the ratio when the fingers touched down ([startZoom]) times how far
+     * they spread ([scale] = current finger distance / initial distance), kept inside the lens
+     * range [min]..[max]. Spreading the fingers to twice the distance doubles the zoom ratio.
+     */
+    fun pinch(startZoom: Float, scale: Float, min: Float, max: Float): Float {
+        if (!(scale > 0f) || !scale.isFinite()) return startZoom.coerceIn(min, max)
+        return (startZoom * scale).coerceIn(min, max)
+    }
 }
