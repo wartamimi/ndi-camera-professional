@@ -1,4 +1,7 @@
 <resources>
-    <color name="ic_launcher_background">#FF14161B</color>
-    <color name="splash_background">#FF14161B</color>
+    <color name="ic_launcher_bg_top">#FF191D2A</color>
+    <color name="ic_launcher_bg_mid">#FF0E121E</color>
+    <color name="ic_launcher_bg_bottom">#FF0A0D18</color>
+    <!-- Same navy as the icon centre so the system splash hands off seamlessly to the animated one. -->
+    <color name="splash_background">#FF0C0F1A</color>
 </resources>

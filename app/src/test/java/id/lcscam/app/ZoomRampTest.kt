@@ -36,4 +36,14 @@ class ZoomRampTest {
         assertEquals(0.6f, ZoomRamp.valueAt(0.6f, 2f, 0f), 1e-6f)
         assertEquals(2f, ZoomRamp.valueAt(0.6f, 2f, 1f), 1e-6f)
     }
+
+    @Test fun pinchScalesFromStartAndClampsToLensRange() {
+        assertEquals(2f, ZoomRamp.pinch(1f, 2f, 0.6f, 10f), 1e-6f)
+        assertEquals(1.5f, ZoomRamp.pinch(3f, 0.5f, 0.6f, 10f), 1e-6f)
+        assertEquals(10f, ZoomRamp.pinch(4f, 5f, 0.6f, 10f), 1e-6f)
+        assertEquals(0.6f, ZoomRamp.pinch(1f, 0.1f, 0.6f, 10f), 1e-6f)
+        // Degenerate gestures keep the starting zoom.
+        assertEquals(2f, ZoomRamp.pinch(2f, 0f, 0.6f, 10f), 1e-6f)
+        assertEquals(2f, ZoomRamp.pinch(2f, Float.NaN, 0.6f, 10f), 1e-6f)
+    }
 }

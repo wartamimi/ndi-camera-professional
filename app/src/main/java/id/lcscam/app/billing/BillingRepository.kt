@@ -31,6 +31,9 @@ data class PlanOffer(
     internal val offerToken: String?,
 )
 
+/** Result of "Restore purchases": [restored] is true when a paid plan was found. */
+data class RestoreResult(val restored: Boolean, val text: String)
+
 sealed interface BillingStatus {
     data object Connecting : BillingStatus
     data object Ready : BillingStatus
@@ -93,17 +96,20 @@ class BillingRepository(context: Context) : PurchasesUpdatedListener {
                 if (result.responseCode == BillingClient.BillingResponseCode.OK) {
                     _status.value = BillingStatus.Ready
                     refresh()
+                    if (restoreAfterConnect) runRestore()
                 } else {
                     _status.value = BillingStatus.Unavailable(describe(result))
+                    failRestore(describe(result))
                 }
             }
             override fun onBillingServiceDisconnected() {
                 _status.value = BillingStatus.Unavailable("Google Play service disconnected")
+                failRestore("Google Play service disconnected")
             }
         })
     }
 
-    /** Re-queries product details and owned purchases ("Restore purchases"). */
+    /** Re-queries product details and owned purchases (silently, e.g. on start and resume). */
     fun refresh() {
         if (!client.isReady) { connect(); return }
         queryProducts()
@@ -157,13 +163,21 @@ class BillingRepository(context: Context) : PurchasesUpdatedListener {
         else -> iso
     }
 
-    private fun queryOwned() {
+    private fun queryOwned(onDone: ((error: String?) -> Unit)? = null) {
+        // Both product types answer on Play's thread; report once, after the second answer.
+        val remaining = java.util.concurrent.atomic.AtomicInteger(2)
+        var error: String? = null
+        fun answered(r: BillingResult) {
+            if (r.responseCode != BillingClient.BillingResponseCode.OK) synchronized(remaining) { error = error ?: describe(r) }
+            if (remaining.decrementAndGet() == 0) onDone?.invoke(synchronized(remaining) { error })
+        }
         client.queryPurchasesAsync(QueryPurchasesParams.newBuilder().setProductType(BillingClient.ProductType.SUBS).build()) { r, list ->
             if (r.responseCode == BillingClient.BillingResponseCode.OK) {
                 synchronized(subsOwned) { subsOwned.clear(); subsOwned += ownedIds(list) }
                 subsQueried = true
                 publishTier()
             }
+            answered(r)
         }
         client.queryPurchasesAsync(QueryPurchasesParams.newBuilder().setProductType(BillingClient.ProductType.INAPP).build()) { r, list ->
             if (r.responseCode == BillingClient.BillingResponseCode.OK) {
@@ -171,7 +185,50 @@ class BillingRepository(context: Context) : PurchasesUpdatedListener {
                 inappQueried = true
                 publishTier()
             }
+            answered(r)
         }
+    }
+
+    private val _restoring = MutableStateFlow(false)
+    /** True while "Restore purchases" is asking Google Play for the account's purchases. */
+    val restoring: StateFlow<Boolean> = _restoring.asStateFlow()
+    @Volatile private var restoreAfterConnect = false
+    private val _restoreResult = MutableStateFlow<RestoreResult?>(null)
+    /** Outcome of the last "Restore purchases" tap, shown under the button. */
+    val restoreResult: StateFlow<RestoreResult?> = _restoreResult.asStateFlow()
+
+    /**
+     * "Restore purchases": asks Google Play (queryPurchasesAsync, SUBS and INAPP) for every active
+     * purchase of the signed-in Play account, acknowledges any unacknowledged ones, re-applies the
+     * plan and reports the result in [message].
+     */
+    fun restorePurchases() {
+        if (_restoring.value) return
+        _restoring.value = true
+        _restoreResult.value = null
+        if (!client.isReady) { restoreAfterConnect = true; connect(); return }
+        runRestore()
+    }
+
+    private fun runRestore() {
+        restoreAfterConnect = false
+        queryOwned { error ->
+            _restoring.value = false
+            val t = _purchasedTier.value
+            _restoreResult.value = when {
+                error != null -> RestoreResult(false, tr("Could not restore purchases. $error", "Gagal memulihkan pembelian. $error"))
+                t == Tier.FREE -> RestoreResult(false, tr("No active purchase found for this Google Play account.",
+                    "Tidak ada pembelian aktif untuk akun Google Play ini."))
+                else -> RestoreResult(true, tr("Purchase restored: ${t.label} plan is active.", "Pembelian dipulihkan: paket ${t.label} aktif."))
+            }
+        }
+    }
+
+    private fun failRestore(reason: String) {
+        if (!restoreAfterConnect && !_restoring.value) return
+        restoreAfterConnect = false
+        _restoring.value = false
+        _restoreResult.value = RestoreResult(false, tr("Could not restore purchases. $reason", "Gagal memulihkan pembelian. $reason"))
     }
 
     private fun ownedIds(list: List<Purchase>): Set<String> {

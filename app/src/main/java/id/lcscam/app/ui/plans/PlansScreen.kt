@@ -9,11 +9,14 @@ import android.net.Uri
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
-import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.width
+import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
@@ -127,13 +130,25 @@ fun PlansScreen(c: AppContainer, onBack: () -> Unit) = SettingsPage(tr("Plans & 
     }
 
     SectionTitle(tr("Manage", "Kelola"))
-    Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-        OutlinedButton(onClick = { billing.refresh() }) { Text(tr("RESTORE PURCHASES", "PULIHKAN PEMBELIAN"), color = Cine.Text) }
-        OutlinedButton(onClick = {
-            val uri = Uri.parse("https://play.google.com/store/account/subscriptions?package=${ctx.packageName}")
-            ctx.startActivity(Intent(Intent.ACTION_VIEW, uri))
-        }) { Text(tr("SUBSCRIPTIONS ON PLAY", "LANGGANAN DI PLAY"), color = Cine.Text) }
+    val restoring by billing.restoring.collectAsStateWithLifecycle()
+    val restoreResult by billing.restoreResult.collectAsStateWithLifecycle()
+    // Restore sits above the Play subscriptions button: it asks Google Play for this account's purchases.
+    OutlinedButton(onClick = { billing.restorePurchases() }, enabled = !restoring, modifier = Modifier.fillMaxWidth()) {
+        if (restoring) {
+            CircularProgressIndicator(color = Cine.Accent, strokeWidth = 2.dp, modifier = Modifier.size(16.dp))
+            Spacer(Modifier.width(8.dp))
+            Text(tr("CHECKING GOOGLE PLAY…", "MEMERIKSA GOOGLE PLAY…"), color = Cine.Dim)
+        } else {
+            Text(tr("RESTORE PURCHASES", "PULIHKAN PEMBELIAN"), color = Cine.Text)
+        }
     }
+    restoreResult?.let { r ->
+        Text(r.text, color = if (r.restored) Cine.Ok else Cine.Warn, fontSize = 12.sp, modifier = Modifier.padding(top = 4.dp))
+    }
+    OutlinedButton(onClick = {
+        val uri = Uri.parse("https://play.google.com/store/account/subscriptions?package=${ctx.packageName}")
+        ctx.startActivity(Intent(Intent.ACTION_VIEW, uri))
+    }, modifier = Modifier.fillMaxWidth().padding(top = 8.dp)) { Text(tr("SUBSCRIPTIONS ON PLAY", "LANGGANAN DI PLAY"), color = Cine.Text) }
     Text(tr("Subscriptions renew automatically and can be cancelled any time in Google Play. Payment is handled by Google Play.",
         "Langganan diperpanjang otomatis dan bisa dibatalkan kapan saja di Google Play. Pembayaran ditangani oleh Google Play."),
         color = Cine.Dim, fontSize = 11.sp, modifier = Modifier.padding(vertical = 8.dp))
